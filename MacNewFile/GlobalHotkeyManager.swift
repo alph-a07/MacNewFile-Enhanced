@@ -115,40 +115,26 @@ public class GlobalHotkeyManager: NSObject {
     @objc public func handleHotKeyTriggered() {
         let editor = QuickEditorWindowController.shared
         let isVisible = editor.window?.isVisible ?? false
-        let selectedPath = getFinderSelectedFilePath()
+        let eligiblePaths = getEligibleFinderSelectedPaths()
 
-        // 1. Repeating shortcut while quick editor is open closes it (like Finder preview)
         if isVisible {
-            if let path = selectedPath {
-                // If on same file: close
-                if path == editor.currentFileURL?.path {
-                    editor.closeWindow()
-                    return
-                }
-
-                // If on different file: switch if enabled, otherwise close
-                let ext = URL(fileURLWithPath: path).pathExtension.lowercased()
-                if SettingsManager.shared.isExtensionEnabledForQuickEditor(ext: ext) {
-                    editor.openFile(atPath: path)
-                    return
-                } else {
-                    editor.closeWindow()
-                    return
-                }
-            } else {
+            // 1. If currently open: repeating shortcut on the same selection closes it!
+            let currentPaths = editor.documents.map { $0.fileURL.path }
+            if eligiblePaths.isEmpty || eligiblePaths == currentPaths {
                 editor.closeWindow()
                 return
             }
+
+            // 2. Different selection: open the new items in multi-tab
+            editor.openFiles(at: eligiblePaths)
+            return
         }
 
-        // 2. Not open: only open if the selected file type is supported and enabled by user!
-        if let path = selectedPath {
-            let ext = URL(fileURLWithPath: path).pathExtension.lowercased()
-            if SettingsManager.shared.isExtensionEnabledForQuickEditor(ext: ext) {
-                editor.openFile(atPath: path)
-            } else {
-                NSSound.beep()
-            }
+        // 3. Not open: only open if there are eligible, supported & enabled items selected
+        if !eligiblePaths.isEmpty {
+            editor.openFiles(at: eligiblePaths)
+        } else {
+            NSSound.beep()
         }
     }
 
@@ -160,13 +146,16 @@ public class GlobalHotkeyManager: NSObject {
         QuickEditorWindowController.shared.openFile(atPath: path)
     }
 
-    public func getFinderSelectedFilePath() -> String? {
+    public func getFinderSelectedFilePaths() -> [String] {
         let scriptSource = """
         tell application "Finder"
             set sel to selection as alias list
-            if (count of sel) > 0 then
-                return POSIX path of (item 1 of sel)
-            end if
+            set outList to {}
+            repeat with itemRef in sel
+                set end of outList to POSIX path of itemRef
+            end repeat
+            set AppleScript's text item delimiters to linefeed
+            return outList as text
         end tell
         """
 
@@ -174,14 +163,22 @@ public class GlobalHotkeyManager: NSObject {
         if let script = NSAppleScript(source: scriptSource) {
             let result = script.executeAndReturnError(&errorDict)
             if let stringValue = result.stringValue, !stringValue.isEmpty {
-                var isDir: ObjCBool = false
-                if FileManager.default.fileExists(atPath: stringValue, isDirectory: &isDir) {
-                    if !isDir.boolValue {
-                        return stringValue
-                    }
-                }
+                let lines = stringValue.components(separatedBy: "\n").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+                return lines
             }
         }
-        return nil
+        return []
+    }
+
+    public func getEligibleFinderSelectedPaths() -> [String] {
+        let paths = getFinderSelectedFilePaths()
+        return paths.filter { path in
+            var isDir: ObjCBool = false
+            if FileManager.default.fileExists(atPath: path, isDirectory: &isDir), !isDir.boolValue {
+                let ext = URL(fileURLWithPath: path).pathExtension.lowercased()
+                return SettingsManager.shared.isExtensionEnabledForQuickEditor(ext: ext)
+            }
+            return false
+        }
     }
 }
