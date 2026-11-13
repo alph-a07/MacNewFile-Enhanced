@@ -74,23 +74,24 @@
 - (void)updateStatusMenu {
     NSMenu *menu = [[NSMenu alloc] init];
 
-    // Header title
-    NSMenuItem *statusHeader = [[NSMenuItem alloc] initWithTitle:NSLocalizedString(@"MacNewFile Enhanced", nil) action:nil keyEquivalent:@""];
-    [menu addItem:statusHeader];
-
-    [menu addItem:[NSMenuItem separatorItem]];
-
     // Quick Edit selection
-    NSMenuItem *quickEditItem = [[NSMenuItem alloc] initWithTitle:NSLocalizedString(@"Quick Edit Selection (⌥Space)", nil)
+    NSMenuItem *quickEditItem = [[NSMenuItem alloc] initWithTitle:NSLocalizedString(@"Quick Edit Selection", nil)
                                                            action:@selector(triggerQuickEdit:)
-                                                    keyEquivalent:@""];
+                                                    keyEquivalent:@" "];
+    quickEditItem.keyEquivalentModifierMask = NSEventModifierFlagOption;
+    if (@available(macOS 11.0, *)) {
+        quickEditItem.image = [NSImage imageWithSystemSymbolName:@"eye" accessibilityDescription:nil];
+    }
     [menu addItem:quickEditItem];
 
     // Open file in editor
-    NSMenuItem *openFileItem = [[NSMenuItem alloc] initWithTitle:NSLocalizedString(@"Open File in Quick Editor...", nil)
+    NSMenuItem *openFileItem = [[NSMenuItem alloc] initWithTitle:NSLocalizedString(@"Open in Quick Editor...", nil)
                                                           action:@selector(openFileInEditor:)
                                                    keyEquivalent:@"o"];
     openFileItem.keyEquivalentModifierMask = NSEventModifierFlagCommand;
+    if (@available(macOS 11.0, *)) {
+        openFileItem.image = [NSImage imageWithSystemSymbolName:@"doc.text" accessibilityDescription:nil];
+    }
     [menu addItem:openFileItem];
 
     [menu addItem:[NSMenuItem separatorItem]];
@@ -100,18 +101,31 @@
                                                           action:@selector(openSettings:)
                                                    keyEquivalent:@","];
     settingsItem.keyEquivalentModifierMask = NSEventModifierFlagCommand;
+    if (@available(macOS 11.0, *)) {
+        settingsItem.image = [NSImage imageWithSystemSymbolName:@"gearshape" accessibilityDescription:nil];
+    }
     [menu addItem:settingsItem];
 
     // Restart extension
     NSMenuItem *restartExtItem = [[NSMenuItem alloc] initWithTitle:NSLocalizedString(@"Restart Finder Extension", nil)
                                                             action:@selector(restartFinderExtension:)
                                                      keyEquivalent:@""];
+    if (@available(macOS 11.0, *)) {
+        restartExtItem.image = [NSImage imageWithSystemSymbolName:@"arrow.clockwise" accessibilityDescription:nil];
+    }
     [menu addItem:restartExtItem];
 
     [menu addItem:[NSMenuItem separatorItem]];
 
     // Quit
-    [menu addItemWithTitle:NSLocalizedString(@"Quit MacNewFile", nil) action:@selector(terminate:) keyEquivalent:@"q"];
+    NSMenuItem *quitItem = [[NSMenuItem alloc] initWithTitle:NSLocalizedString(@"Quit MacNewFile", nil)
+                                                      action:@selector(terminate:)
+                                               keyEquivalent:@"q"];
+    quitItem.keyEquivalentModifierMask = NSEventModifierFlagCommand;
+    if (@available(macOS 11.0, *)) {
+        quitItem.image = [NSImage imageWithSystemSymbolName:@"power" accessibilityDescription:nil];
+    }
+    [menu addItem:quitItem];
 
     self.statusItem.menu = menu;
 }

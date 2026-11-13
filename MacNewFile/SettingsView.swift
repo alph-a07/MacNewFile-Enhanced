@@ -26,6 +26,20 @@ public struct SettingsView: View {
     @ObservedObject var settingsManager = SettingsManager.shared
     @ObservedObject var viewModel = SettingsViewModel()
 
+    private let popularCodingFonts = [
+        "SF Mono", "Menlo", "Monaco", "Courier New", "Courier",
+        "Andale Mono", "PT Mono", "Fira Code", "JetBrains Mono",
+        "Source Code Pro", "Cascadia Code", "Hack"
+    ]
+
+    private var allSystemFonts: [String] {
+        return NSFontManager.shared.availableFontFamilies.sorted()
+    }
+
+    private let availableTerminals = [
+        "Terminal", "iTerm", "Warp", "Ghostty", "Alacritty", "kitty", "Custom"
+    ]
+
     private var categories: [String] {
         var set = Set<String>()
         for item in settingsManager.settings.fileItems {
@@ -71,13 +85,19 @@ public struct SettingsView: View {
                 }
                 .tag(1)
 
+            terminalTab
+                .tabItem {
+                    Label("Terminal", systemImage: "terminal.fill")
+                }
+                .tag(2)
+
             generalTab
                 .tabItem {
                     Label("General", systemImage: "gearshape")
                 }
-                .tag(2)
+                .tag(3)
         }
-        .frame(minWidth: 720, idealWidth: 760, minHeight: 520, idealHeight: 560)
+        .frame(minWidth: 740, idealWidth: 780, minHeight: 540, idealHeight: 580)
         .sheet(isPresented: $viewModel.isShowingAddSheet) {
             addCustomTypeSheet
         }
@@ -94,13 +114,13 @@ public struct SettingsView: View {
                         .foregroundColor(.accentColor)
 
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Independent File Type Enablement")
+                        Text("File Type Enablement")
                             .font(.headline)
                         HStack(spacing: 12) {
                             HStack(spacing: 4) {
                                 Image(systemName: "plus.square.fill")
                                     .foregroundColor(.blue)
-                                Text("New File Menu: \(newFileActiveCount) enabled")
+                                Text("New File: \(newFileActiveCount) enabled")
                             }
                             Text("•").foregroundColor(.secondary)
                             HStack(spacing: 4) {
@@ -299,7 +319,7 @@ public struct SettingsView: View {
     // MARK: - Quick Editor Tab
     private var quickEditorTab: some View {
         Form {
-            Section(header: Text("Finder Preview Experience").font(.headline)) {
+            Section(header: Text("Activation & Experience").font(.headline)) {
                 Picker("Global Shortcut:", selection: $settingsManager.settings.quickEditorShortcut) {
                     Text("Option + Space (⌥ Space)").tag("Option+Space")
                     Text("Command + Shift + E (⌘⇧E)").tag("Cmd+Shift+E")
@@ -310,23 +330,33 @@ public struct SettingsView: View {
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text("• Press shortcut on any supported file in Finder to preview and edit in-place.")
-                    Text("• Repeating the shortcut while open closes the preview (just like macOS Quick Look).")
+                    Text("• Repeating shortcut or clicking empty space closes preview (like macOS Quick Look).")
+                    Text("• Multi-selection in Finder opens an editable multi-tab bar for all selected items.")
                     Text("• Moving arrow keys in Finder dynamically updates the preview to the selected file.")
-                    Text("• Only active for file types with 'Quick Edit' enabled in File Types tab.")
                 }
                 .font(.caption)
                 .foregroundColor(.secondary)
                 .padding(.vertical, 2)
 
+                Toggle("Fluid Quick Look opening & closing animations", isOn: $settingsManager.settings.enableQuickLookAnimation)
                 Toggle("Show \"Quick Edit File\" in Finder right-click menu", isOn: $settingsManager.settings.showQuickEditInMenu)
             }
 
-            Section(header: Text("Editor Appearance & Typography").font(.headline)) {
+            Section(header: Text("Typography & Appearance").font(.headline)) {
                 Picker("Font Family:", selection: $settingsManager.settings.quickEditorFontFamily) {
-                    Text("SF Mono").tag("SF Mono")
-                    Text("Menlo").tag("Menlo")
-                    Text("Courier New").tag("Courier New")
+                    Section(header: Text("Coding & Monospace")) {
+                        ForEach(popularCodingFonts, id: \.self) { font in
+                            Text(font).tag(font)
+                        }
+                    }
+
+                    Section(header: Text("All Installed System Fonts")) {
+                        ForEach(allSystemFonts, id: \.self) { font in
+                            Text(font).tag(font)
+                        }
+                    }
                 }
+                .pickerStyle(.menu)
 
                 HStack {
                     Text("Font Size:")
@@ -350,6 +380,65 @@ public struct SettingsView: View {
         .padding(20)
     }
 
+    // MARK: - Terminal Tab
+    private var terminalTab: some View {
+        Form {
+            Section(header: Text("Terminal Application").font(.headline)) {
+                Text("Select your preferred terminal app to launch when using 'Open in Terminal' from Finder.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+
+                Picker("Terminal App:", selection: $settingsManager.settings.terminalApp) {
+                    ForEach(availableTerminals, id: \.self) { term in
+                        Text(term == "kitty" ? "Kitty" : term).tag(term)
+                    }
+                }
+                .pickerStyle(.menu)
+
+                if settingsManager.settings.terminalApp == "Custom" {
+                    HStack {
+                        TextField("App name or path:", text: Binding(
+                            get: { settingsManager.settings.terminalAppCustomPath ?? "" },
+                            set: { settingsManager.settings.terminalAppCustomPath = $0 }
+                        ))
+                        Button("Browse...") {
+                            let panel = NSOpenPanel()
+                            panel.canChooseFiles = true
+                            panel.canChooseDirectories = false
+                            panel.allowedContentTypes = [.application]
+                            if panel.runModal() == .OK, let url = panel.url {
+                                settingsManager.settings.terminalAppCustomPath = url.path
+                            }
+                        }
+                    }
+                }
+
+                HStack {
+                    Spacer()
+                    Button("Test Terminal Launch") {
+                        testLaunchTerminal()
+                    }
+                    .buttonStyle(.bordered)
+                }
+            }
+        }
+        .padding(20)
+    }
+
+    private func testLaunchTerminal() {
+        let app = settingsManager.settings.terminalApp
+        let custom = settingsManager.settings.terminalAppCustomPath
+        let home = NSHomeDirectory()
+
+        let script: String
+        if app == "Custom", let c = custom, !c.isEmpty {
+            script = "do shell script \"open -a '\(c)' '\(home)'\""
+        } else {
+            script = "do shell script \"open -a '\(app)' '\(home)'\""
+        }
+        NSAppleScript(source: script)?.executeAndReturnError(nil)
+    }
+
     // MARK: - General Tab
     private var generalTab: some View {
         Form {
@@ -360,7 +449,7 @@ public struct SettingsView: View {
                     .foregroundColor(.secondary)
 
                 Toggle("Include \"Copy Path\" item", isOn: $settingsManager.settings.includeCopyPath)
-                Toggle("Include \"Open New Terminal\" item", isOn: $settingsManager.settings.includeOpenTerminal)
+                Toggle("Include \"Open Terminal\" item", isOn: $settingsManager.settings.includeOpenTerminal)
             }
 
             Section(header: Text("System Integration").font(.headline)) {

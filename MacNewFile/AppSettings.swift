@@ -1,7 +1,7 @@
 import Foundation
 
 public struct AppSettings: Codable, Equatable {
-    public var version: Int = 2
+    public var version: Int = 3
     public var fileItems: [FileItem] = []
     public var groupByCategory: Bool = false
     public var showQuickEditInMenu: Bool = true
@@ -11,8 +11,11 @@ public struct AppSettings: Codable, Equatable {
     public var quickEditorTheme: String = "system" // "system", "dark", "light"
     public var showLineNumbers: Bool = true
     public var wordWrap: Bool = true
+    public var enableQuickLookAnimation: Bool = true
     public var includeCopyPath: Bool = true
     public var includeOpenTerminal: Bool = true
+    public var terminalApp: String = "Terminal" // "Terminal", "iTerm", "Warp", "Ghostty", "Alacritty", "Kitty", "Custom"
+    public var terminalAppCustomPath: String? = nil
     public var launchAtLogin: Bool = true
 
     public static func defaultSettings() -> AppSettings {

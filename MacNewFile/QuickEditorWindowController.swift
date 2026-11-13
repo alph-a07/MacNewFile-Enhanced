@@ -95,7 +95,7 @@ public class QuickEditorWindowController: NSWindowController, NSTextViewDelegate
         container.addSubview(headerView)
 
         // File icon
-        iconImageView = NSImageView(frame: NSRect(x: 64, y: 11, width: 22, height: 22))
+        iconImageView = NSImageView(frame: NSRect(x: 76, y: 11, width: 22, height: 22))
         iconImageView.imageScaling = .scaleProportionallyUpOrDown
         headerView.addSubview(iconImageView)
 
@@ -103,14 +103,14 @@ public class QuickEditorWindowController: NSWindowController, NSTextViewDelegate
         titleLabel = NSTextField(labelWithString: "Untitled")
         titleLabel.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
         titleLabel.textColor = .labelColor
-        titleLabel.frame = NSRect(x: 92, y: 21, width: 320, height: 18)
+        titleLabel.frame = NSRect(x: 106, y: 22, width: 260, height: 18)
         titleLabel.autoresizingMask = [.width]
         headerView.addSubview(titleLabel)
 
         pathLabel = NSTextField(labelWithString: "")
         pathLabel.font = NSFont.systemFont(ofSize: 11, weight: .regular)
         pathLabel.textColor = .secondaryLabelColor
-        pathLabel.frame = NSRect(x: 92, y: 6, width: 320, height: 15)
+        pathLabel.frame = NSRect(x: 106, y: 6, width: 260, height: 15)
         pathLabel.autoresizingMask = [.width]
         headerView.addSubview(pathLabel)
 
@@ -119,12 +119,12 @@ public class QuickEditorWindowController: NSWindowController, NSTextViewDelegate
         saveIndicatorLabel.font = NSFont.systemFont(ofSize: 11, weight: .medium)
         saveIndicatorLabel.textColor = .secondaryLabelColor
         saveIndicatorLabel.alignment = .right
-        saveIndicatorLabel.frame = NSRect(x: headerView.bounds.width - 340, y: 14, width: 100, height: 16)
+        saveIndicatorLabel.frame = NSRect(x: headerView.bounds.width - 310, y: 14, width: 100, height: 16)
         saveIndicatorLabel.autoresizingMask = [.minXMargin, .minYMargin]
         headerView.addSubview(saveIndicatorLabel)
 
         // "Open with..." PopUp Menu Button
-        openWithButton = NSPopUpButton(frame: NSRect(x: headerView.bounds.width - 230, y: 9, width: 215, height: 26), pullsDown: false)
+        openWithButton = NSPopUpButton(frame: NSRect(x: headerView.bounds.width - 200, y: 9, width: 188, height: 26), pullsDown: false)
         openWithButton.bezelStyle = .rounded
         openWithButton.font = NSFont.systemFont(ofSize: 12, weight: .medium)
         openWithButton.autoresizingMask = [.minXMargin, .minYMargin]
@@ -425,17 +425,43 @@ public class QuickEditorWindowController: NSWindowController, NSTextViewDelegate
         updateStatusUI()
     }
 
+    private func updateWindowAppearance() {
+        guard let window = self.window else { return }
+        let settings = SettingsManager.shared.settings
+
+        if settings.quickEditorTheme == "dark" {
+            window.appearance = NSAppearance(named: .darkAqua)
+            backgroundVisualEffect?.material = .hudWindow
+        } else if settings.quickEditorTheme == "light" {
+            window.appearance = NSAppearance(named: .aqua)
+            backgroundVisualEffect?.material = .popover
+        } else {
+            let isDark: Bool
+            if let style = UserDefaults.standard.string(forKey: "AppleInterfaceStyle") {
+                isDark = (style == "Dark")
+            } else {
+                isDark = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            }
+            window.appearance = isDark ? NSAppearance(named: .darkAqua) : NSAppearance(named: .aqua)
+            backgroundVisualEffect?.material = isDark ? .hudWindow : .popover
+        }
+    }
+
     private func resolveEditorColors() -> (textColor: NSColor, bgColor: NSColor) {
         let settings = SettingsManager.shared.settings
         if settings.quickEditorTheme == "dark" {
-            return (NSColor(white: 0.94, alpha: 1.0), NSColor(calibratedRed: 0.12, green: 0.12, blue: 0.13, alpha: 0.95))
+            return (NSColor(white: 0.94, alpha: 1.0), .clear)
         } else if settings.quickEditorTheme == "light" {
-            return (NSColor.black, NSColor(white: 0.98, alpha: 0.95))
+            return (NSColor(white: 0.12, alpha: 1.0), .clear)
         } else {
-            let isDark = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-            let textCol = isDark ? NSColor(white: 0.94, alpha: 1.0) : NSColor.textColor
-            let bgCol = isDark ? NSColor(white: 0.14, alpha: 0.95) : NSColor(white: 0.98, alpha: 0.95)
-            return (textCol, bgCol)
+            let isDark: Bool
+            if let style = UserDefaults.standard.string(forKey: "AppleInterfaceStyle") {
+                isDark = (style == "Dark")
+            } else {
+                isDark = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            }
+            let textCol = isDark ? NSColor(white: 0.94, alpha: 1.0) : NSColor(white: 0.12, alpha: 1.0)
+            return (textCol, .clear)
         }
     }
 
@@ -443,17 +469,19 @@ public class QuickEditorWindowController: NSWindowController, NSTextViewDelegate
         let settings = SettingsManager.shared.settings
         var fontSize = CGFloat(settings.quickEditorFontSize)
         if fontSize < 10 { fontSize = 13 }
+        let fontName = settings.quickEditorFontFamily
 
-        if settings.quickEditorFontFamily == "Menlo" {
-            return NSFont(name: "Menlo", size: fontSize) ?? NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
-        } else if settings.quickEditorFontFamily == "Courier New" {
-            return NSFont(name: "Courier New", size: fontSize) ?? NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
-        } else {
+        if fontName == "SF Mono" {
             return NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
         }
+        if let font = NSFont(name: fontName, size: fontSize) {
+            return font
+        }
+        return NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
     }
 
     private func applySettingsAppearance() {
+        updateWindowAppearance()
         let settings = SettingsManager.shared.settings
         let font = resolveFont()
         let colors = resolveEditorColors()
@@ -461,6 +489,10 @@ public class QuickEditorWindowController: NSWindowController, NSTextViewDelegate
         textView.font = font
         textView.textColor = colors.textColor
         textView.insertionPointColor = colors.textColor
+
+        titleLabel.textColor = .labelColor
+        pathLabel.textColor = .secondaryLabelColor
+        statusLabel.textColor = .secondaryLabelColor
 
         if settings.wordWrap {
             textView.isHorizontallyResizable = false
@@ -495,9 +527,96 @@ public class QuickEditorWindowController: NSWindowController, NSTextViewDelegate
         gutterView?.needsDisplay = true
     }
 
+    // MARK: - Animated Presentation & Dismissal (Quick Look Zoom Transitions)
+    private func getFinderSourceRect() -> NSRect? {
+        let script = """
+        tell application "Finder"
+            try
+                set s to selection
+                if (count of s) > 0 then
+                    set p to position of item 1 of s
+                    return "pos:" & (item 1 of p as text) & "," & (item 2 of p as text)
+                end if
+            end try
+            if exists front window then
+                set b to bounds of front window
+                return "win:" & (item 1 of b as text) & "," & (item 2 of b as text) & "," & (item 3 of b as text) & "," & (item 4 of b as text)
+            else
+                set b to bounds of window of desktop
+                return "win:" & (item 1 of b as text) & "," & (item 2 of b as text) & "," & (item 3 of b as text) & "," & (item 4 of b as text)
+            end if
+        end tell
+        """
+        var err: NSDictionary?
+        if let res = NSAppleScript(source: script)?.executeAndReturnError(&err).stringValue {
+            let screenHeight = NSScreen.main?.frame.height ?? 900
+            if res.hasPrefix("pos:") {
+                let coordStr = String(res.dropFirst(4))
+                let parts = coordStr.components(separatedBy: ",").compactMap { Double($0.trimmingCharacters(in: .whitespaces)) }
+                if parts.count == 2 {
+                    let posX = CGFloat(parts[0])
+                    let posY = CGFloat(parts[1])
+                    let cocoaY = screenHeight - posY
+                    return NSRect(x: posX - 40, y: cocoaY - 40, width: 80, height: 80)
+                }
+            } else if res.hasPrefix("win:") {
+                let boundsStr = String(res.dropFirst(4))
+                let parts = boundsStr.components(separatedBy: ",").compactMap { Double($0.trimmingCharacters(in: .whitespaces)) }
+                if parts.count == 4 {
+                    let x = parts[0]
+                    let y = parts[1]
+                    let r = parts[2]
+                    let b = parts[3]
+                    let width = max(100, r - x)
+                    let height = max(100, b - y)
+                    let cocoaY = screenHeight - CGFloat(y + height)
+                    return NSRect(x: CGFloat(x), y: cocoaY, width: CGFloat(width), height: CGFloat(height))
+                }
+            }
+        }
+        return nil
+    }
+
     private func presentPanel() {
+        guard let window = self.window else { return }
+
+        let isAlreadyVisible = window.isVisible
         showWindow(nil)
-        window?.makeKeyAndOrderFront(nil)
+
+        if !isAlreadyVisible && SettingsManager.shared.settings.enableQuickLookAnimation {
+            let screenFrame = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
+            let targetWidth: CGFloat = 740
+            let targetHeight: CGFloat = 530
+            let targetFrame = NSRect(
+                x: screenFrame.midX - targetWidth / 2,
+                y: screenFrame.midY - targetHeight / 2,
+                width: targetWidth,
+                height: targetHeight
+            )
+
+            var startFrame: NSRect
+            if let finderRect = getFinderSourceRect() {
+                let centerX = finderRect.midX
+                let centerY = finderRect.midY
+                startFrame = NSRect(x: centerX - 50, y: centerY - 40, width: 100, height: 80)
+            } else {
+                startFrame = NSRect(x: targetFrame.midX - 50, y: targetFrame.midY - 40, width: 100, height: 80)
+            }
+
+            window.setFrame(startFrame, display: false)
+            window.alphaValue = 0.0
+            window.makeKeyAndOrderFront(nil)
+
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0.22
+                context.timingFunction = CAMediaTimingFunction(controlPoints: 0.16, 1.0, 0.3, 1.0)
+                window.animator().setFrame(targetFrame, display: true)
+                window.animator().alphaValue = 1.0
+            }
+        } else {
+            window.makeKeyAndOrderFront(nil)
+        }
+
         textView.window?.makeFirstResponder(textView)
         startSelectionPolling()
     }
@@ -637,10 +756,35 @@ public class QuickEditorWindowController: NSWindowController, NSTextViewDelegate
     }
 
     @objc public func closeWindow() {
-        window?.orderOut(nil)
+        guard let window = self.window else { return }
         stopSelectionPolling()
-        documents.removeAll()
-        activeIndex = 0
+
+        if window.isVisible && SettingsManager.shared.settings.enableQuickLookAnimation {
+            let currentFrame = window.frame
+            var closeFrame: NSRect
+            if let sourceRect = getFinderSourceRect() {
+                closeFrame = sourceRect
+            } else {
+                closeFrame = NSRect(x: currentFrame.midX - 50, y: currentFrame.midY - 40, width: 100, height: 80)
+            }
+
+            NSAnimationContext.runAnimationGroup({ context in
+                context.duration = 0.16
+                context.timingFunction = CAMediaTimingFunction(name: .easeIn)
+                window.animator().setFrame(closeFrame, display: true)
+                window.animator().alphaValue = 0.0
+            }, completionHandler: { [weak self] in
+                window.orderOut(nil)
+                window.alphaValue = 1.0
+                window.setFrame(currentFrame, display: false)
+                self?.documents.removeAll()
+                self?.activeIndex = 0
+            })
+        } else {
+            window.orderOut(nil)
+            documents.removeAll()
+            activeIndex = 0
+        }
     }
 
     public func textDidChange(_ notification: Notification) {

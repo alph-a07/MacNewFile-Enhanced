@@ -42,7 +42,11 @@ public class LineNumberGutterView: NSRulerView {
             return
         }
 
-        let visibleGlyphRange = layoutManager.glyphRange(forBoundingRect: textView.visibleRect, in: textContainer)
+        var viewRect = textView.visibleRect
+        if viewRect.height <= 0 {
+            viewRect = textView.bounds
+        }
+        let visibleGlyphRange = layoutManager.glyphRange(forBoundingRect: viewRect, in: textContainer)
         let visibleCharRange = layoutManager.characterRange(forGlyphRange: visibleGlyphRange, actualGlyphRange: nil)
 
         // Find starting line number

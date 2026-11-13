@@ -142,6 +142,22 @@
     return [NSImage imageNamed:NSImageNameAddTemplate];
 }
 
+- (BOOL)isExtensionEnabledForQuickEdit:(NSString *)ext fromSettings:(NSDictionary *)settings {
+    if (!ext || ext.length == 0) return NO;
+    NSArray *fileItems = settings[@"fileItems"];
+    if (!fileItems) return YES;
+    for (NSDictionary *item in fileItems) {
+        NSString *itemExt = [item[@"ext"] lowercaseString];
+        if ([itemExt isEqualToString:ext]) {
+            if (item[@"enabledForQuickEditor"] != nil) {
+                return [item[@"enabledForQuickEditor"] boolValue];
+            }
+            return YES;
+        }
+    }
+    return NO;
+}
+
 - (NSMenu *)menuForMenuKind:(FIMenuKind)whichMenu {
     NSMenu *menu = [[NSMenu alloc] initWithTitle:@""];
     NSDictionary *settings = [self loadCurrentSettings];
@@ -178,47 +194,40 @@
         }
     }
 
-    // 1. If right-clicked directly on a file/item, show "Quick Edit"
-    if (whichMenu == FIMenuKindContextualMenuForItems) {
-        if (showQuickEdit) {
+    // Check selected items in Finder
+    NSArray<NSURL *> *selectedItems = [[FIFinderSyncController defaultController] selectedItemURLs];
+    BOOL isSingleFileSelected = NO;
+    if (selectedItems.count == 1) {
+        BOOL isDir = NO;
+        if ([[NSFileManager defaultManager] fileExistsAtPath:selectedItems.firstObject.path isDirectory:&isDir]) {
+            isSingleFileSelected = !isDir;
+        }
+    }
+
+    // 1. If right-clicked directly on a single file, show "Quick Edit File" if enabled
+    if (whichMenu == FIMenuKindContextualMenuForItems && isSingleFileSelected && showQuickEdit) {
+        NSString *ext = [selectedItems.firstObject.pathExtension lowercaseString];
+        if ([self isExtensionEnabledForQuickEdit:ext fromSettings:settings]) {
             NSMenuItem *quickEditItem = [[NSMenuItem alloc] initWithTitle:NSLocalizedString(@"Quick Edit File", nil)
                                                                    action:@selector(quickEditSelectedFile:)
                                                             keyEquivalent:@""];
-            NSImage *editIcon = [NSImage imageNamed:@"edit"];
-            editIcon.template = YES;
-            quickEditItem.image = editIcon;
+            if (@available(macOS 11.0, *)) {
+                quickEditItem.image = [NSImage imageWithSystemSymbolName:@"eye" accessibilityDescription:@"Quick Edit"];
+            } else {
+                quickEditItem.image = [NSImage imageNamed:@"edit"];
+            }
             [menu addItem:quickEditItem];
             [menu addItem:[NSMenuItem separatorItem]];
         }
     }
 
-    // 2. "Copy Path" menu item
-    if (includeCopyPath) {
-        NSMenuItem *copyPathItem = [[NSMenuItem alloc] initWithTitle:NSLocalizedString(@"Copy Path", nil)
-                                                              action:@selector(copyPathToClipboard:)
-                                                       keyEquivalent:@""];
-        NSImage *copyIcon = [NSImage imageNamed:@"copy"];
-        copyIcon.template = YES;
-        copyPathItem.image = copyIcon;
-        [menu addItem:copyPathItem];
-    }
-
-    // 3. "Open Terminal" menu item
-    if (includeOpenTerminal) {
-        NSMenuItem *openTerminalItem = [[NSMenuItem alloc] initWithTitle:NSLocalizedString(@"Open New Terminal", nil)
-                                                                  action:@selector(openTerminalAtPath:)
-                                                           keyEquivalent:@""];
-        NSImage *terminalIcon = [NSImage imageNamed:@"terminal"];
-        terminalIcon.template = YES;
-        openTerminalItem.image = terminalIcon;
-        [menu addItem:openTerminalItem];
-    }
-
-    // 4. "New File" Submenu
+    // 2. "New File" Menu (placed prominently)
     NSMenuItem *mainItem = [[NSMenuItem alloc] initWithTitle:NSLocalizedString(@"New File", nil) action:nil keyEquivalent:@""];
-    NSImage *mainIcon = [NSImage imageNamed:@"add"];
-    mainIcon.template = YES;
-    mainItem.image = mainIcon;
+    if (@available(macOS 11.0, *)) {
+        mainItem.image = [NSImage imageWithSystemSymbolName:@"plus.circle" accessibilityDescription:@"New File"];
+    } else {
+        mainItem.image = [NSImage imageNamed:@"add"];
+    }
 
     NSMenu *submenu = [[NSMenu alloc] initWithTitle:@""];
 
@@ -260,6 +269,38 @@
     mainItem.submenu = submenu;
     [menu addItem:mainItem];
 
+    if (includeOpenTerminal || includeCopyPath) {
+        [menu addItem:[NSMenuItem separatorItem]];
+    }
+
+    // 3. "Open Terminal" menu item
+    if (includeOpenTerminal) {
+        NSString *termApp = settings[@"terminalApp"] ?: @"Terminal";
+        NSString *termTitle = [NSString stringWithFormat:NSLocalizedString(@"Open in %@", nil), termApp];
+        NSMenuItem *openTerminalItem = [[NSMenuItem alloc] initWithTitle:termTitle
+                                                                  action:@selector(openTerminalAtPath:)
+                                                           keyEquivalent:@""];
+        if (@available(macOS 11.0, *)) {
+            openTerminalItem.image = [NSImage imageWithSystemSymbolName:@"terminal" accessibilityDescription:@"Terminal"];
+        } else {
+            openTerminalItem.image = [NSImage imageNamed:@"terminal"];
+        }
+        [menu addItem:openTerminalItem];
+    }
+
+    // 4. "Copy Path" menu item
+    if (includeCopyPath) {
+        NSMenuItem *copyPathItem = [[NSMenuItem alloc] initWithTitle:NSLocalizedString(@"Copy Path", nil)
+                                                              action:@selector(copyPathToClipboard:)
+                                                       keyEquivalent:@""];
+        if (@available(macOS 11.0, *)) {
+            copyPathItem.image = [NSImage imageWithSystemSymbolName:@"doc.on.clipboard" accessibilityDescription:@"Copy Path"];
+        } else {
+            copyPathItem.image = [NSImage imageNamed:@"copy"];
+        }
+        [menu addItem:copyPathItem];
+    }
+
     return menu;
 }
 
@@ -268,25 +309,13 @@
     NSMenuItem *menuItem = [[NSMenuItem alloc] initWithTitle:name action:@selector(handleCreateFileItem:) keyEquivalent:@""];
     menuItem.representedObject = item;
 
-    // Set appropriate icon
-    NSString *creatorType = item[@"creatorType"] ?: @"standard";
-    NSString *iconName = @"document";
-
-    if ([creatorType isEqualToString:@"docx"]) iconName = @"word";
-    else if ([creatorType isEqualToString:@"xlsx"]) iconName = @"excel";
-    else if ([creatorType isEqualToString:@"pptx"]) iconName = @"powerpoint";
-    else if ([creatorType isEqualToString:@"pages"]) iconName = @"pages";
-    else if ([creatorType isEqualToString:@"numbers"]) iconName = @"numbers";
-    else if ([creatorType isEqualToString:@"key"]) iconName = @"keynote";
-    else {
-        NSString *ext = [item[@"ext"] lowercaseString];
-        if ([ext isEqualToString:@"txt"] || [ext isEqualToString:@"rtf"]) iconName = @"edit";
-        else if ([ext isEqualToString:@"sh"]) iconName = @"terminal";
-    }
-
-    NSImage *icon = [NSImage imageNamed:iconName];
+    NSString *ext = [item[@"ext"] lowercaseString] ?: @"txt";
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    NSImage *icon = [[NSWorkspace sharedWorkspace] iconForFileType:ext];
+#pragma clang diagnostic pop
     if (icon) {
-        icon.template = YES;
+        icon.size = NSMakeSize(16, 16);
         menuItem.image = icon;
     }
 
@@ -319,7 +348,8 @@
 }
 
 - (void)copyPathToClipboard:(id)sender {
-    NSURL *targetURL = [[FIFinderSyncController defaultController] targetedURL];
+    NSArray<NSURL *> *selectedItems = [[FIFinderSyncController defaultController] selectedItemURLs];
+    NSURL *targetURL = (selectedItems.count > 0) ? selectedItems.firstObject : [[FIFinderSyncController defaultController] targetedURL];
     if (!targetURL) return;
 
     NSString *path = targetURL.path;
@@ -329,12 +359,33 @@
 }
 
 - (void)openTerminalAtPath:(id)sender {
-    NSURL *targetURL = [[FIFinderSyncController defaultController] targetedURL];
+    NSURL *targetURL = nil;
+    NSArray<NSURL *> *selectedItems = [[FIFinderSyncController defaultController] selectedItemURLs];
+    if (selectedItems.count == 1) {
+        BOOL isDir = NO;
+        if ([[NSFileManager defaultManager] fileExistsAtPath:selectedItems.firstObject.path isDirectory:&isDir] && isDir) {
+            targetURL = selectedItems.firstObject;
+        }
+    }
+    if (!targetURL) {
+        targetURL = [[FIFinderSyncController defaultController] targetedURL];
+    }
     if (!targetURL) return;
+
+    NSDictionary *settings = [self loadCurrentSettings];
+    NSString *termApp = settings[@"terminalApp"] ?: @"Terminal";
+    NSString *customPath = settings[@"terminalAppCustomPath"];
 
     NSString *path = targetURL.path;
     NSString *escapedPath = [path stringByReplacingOccurrencesOfString:@"'" withString:@"'\\''"];
-    NSString *scriptSource = [NSString stringWithFormat:@"do shell script \"open -a Terminal '%@'\"", escapedPath];
+
+    NSString *scriptSource;
+    if ([termApp isEqualToString:@"Custom"] && customPath.length > 0) {
+        NSString *escapedApp = [customPath stringByReplacingOccurrencesOfString:@"'" withString:@"'\\''"];
+        scriptSource = [NSString stringWithFormat:@"do shell script \"open -a '%@' '%@'\"", escapedApp, escapedPath];
+    } else {
+        scriptSource = [NSString stringWithFormat:@"do shell script \"open -a '%@' '%@'\"", termApp, escapedPath];
+    }
 
     NSAppleScript *script = [[NSAppleScript alloc] initWithSource:scriptSource];
     [script executeAndReturnError:nil];
