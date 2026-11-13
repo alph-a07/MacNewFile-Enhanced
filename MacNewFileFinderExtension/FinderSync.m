@@ -110,15 +110,15 @@
 
 - (NSArray<NSDictionary *> *)defaultFallbackItems {
     return @[
-        @{@"id": @"txt", @"name": @"Text File", @"ext": @"txt", @"category": @"Documents & Notes", @"isEnabled": @YES, @"creatorType": @"standard"},
-        @{@"id": @"md", @"name": @"Markdown Document", @"ext": @"md", @"category": @"Documents & Notes", @"isEnabled": @YES, @"creatorType": @"standard", @"template": @"# Title\n\n"},
-        @{@"id": @"py", @"name": @"Python Script", @"ext": @"py", @"category": @"Code & Web", @"isEnabled": @YES, @"creatorType": @"standard", @"template": @"#!/usr/bin/env python3\n"},
-        @{@"id": @"docx", @"name": @"Microsoft Word Document", @"ext": @"docx", @"category": @"Documents & Notes", @"isEnabled": @YES, @"creatorType": @"docx"},
-        @{@"id": @"xlsx", @"name": @"Microsoft Excel Spreadsheet", @"ext": @"xlsx", @"category": @"Documents & Notes", @"isEnabled": @YES, @"creatorType": @"xlsx"},
-        @{@"id": @"pptx", @"name": @"Microsoft PowerPoint Presentation", @"ext": @"pptx", @"category": @"Documents & Notes", @"isEnabled": @YES, @"creatorType": @"pptx"},
-        @{@"id": @"pages", @"name": @"Apple Pages Document", @"ext": @"pages", @"category": @"Documents & Notes", @"isEnabled": @YES, @"creatorType": @"pages"},
-        @{@"id": @"numbers", @"name": @"Apple Numbers Spreadsheet", @"ext": @"numbers", @"category": @"Documents & Notes", @"isEnabled": @YES, @"creatorType": @"numbers"},
-        @{@"id": @"key", @"name": @"Apple Keynote Presentation", @"ext": @"key", @"category": @"Documents & Notes", @"isEnabled": @YES, @"creatorType": @"key"}
+        @{@"id": @"txt", @"name": @"Text File", @"ext": @"txt", @"category": @"Documents & Notes", @"enabledForNewFile": @YES, @"enabledForQuickEditor": @YES, @"creatorType": @"standard"},
+        @{@"id": @"md", @"name": @"Markdown Document", @"ext": @"md", @"category": @"Documents & Notes", @"enabledForNewFile": @YES, @"enabledForQuickEditor": @YES, @"creatorType": @"standard", @"template": @"# Title\n\n"},
+        @{@"id": @"py", @"name": @"Python Script", @"ext": @"py", @"category": @"Code & Web", @"enabledForNewFile": @YES, @"enabledForQuickEditor": @YES, @"creatorType": @"standard", @"template": @"#!/usr/bin/env python3\n"},
+        @{@"id": @"docx", @"name": @"Microsoft Word Document", @"ext": @"docx", @"category": @"Documents & Notes", @"enabledForNewFile": @YES, @"enabledForQuickEditor": @NO, @"creatorType": @"docx"},
+        @{@"id": @"xlsx", @"name": @"Microsoft Excel Spreadsheet", @"ext": @"xlsx", @"category": @"Documents & Notes", @"enabledForNewFile": @YES, @"enabledForQuickEditor": @NO, @"creatorType": @"xlsx"},
+        @{@"id": @"pptx", @"name": @"Microsoft PowerPoint Presentation", @"ext": @"pptx", @"category": @"Documents & Notes", @"enabledForNewFile": @YES, @"enabledForQuickEditor": @NO, @"creatorType": @"pptx"},
+        @{@"id": @"pages", @"name": @"Apple Pages Document", @"ext": @"pages", @"category": @"Documents & Notes", @"enabledForNewFile": @YES, @"enabledForQuickEditor": @NO, @"creatorType": @"pages"},
+        @{@"id": @"numbers", @"name": @"Apple Numbers Spreadsheet", @"ext": @"numbers", @"category": @"Documents & Notes", @"enabledForNewFile": @YES, @"enabledForQuickEditor": @NO, @"creatorType": @"numbers"},
+        @{@"id": @"key", @"name": @"Apple Keynote Presentation", @"ext": @"key", @"category": @"Documents & Notes", @"enabledForNewFile": @YES, @"enabledForQuickEditor": @NO, @"creatorType": @"key"}
     ];
 }
 
@@ -164,10 +164,16 @@
         fileItems = [self defaultFallbackItems];
     }
 
-    // Filter enabled items
+    // Filter enabled items for New File action
     NSMutableArray<NSDictionary *> *enabledItems = [NSMutableArray array];
     for (NSDictionary *item in fileItems) {
-        if ([item[@"isEnabled"] boolValue]) {
+        BOOL isEnabled = NO;
+        if (item[@"enabledForNewFile"] != nil) {
+            isEnabled = [item[@"enabledForNewFile"] boolValue];
+        } else if (item[@"isEnabled"] != nil) {
+            isEnabled = [item[@"isEnabled"] boolValue];
+        }
+        if (isEnabled) {
             [enabledItems addObject:item];
         }
     }

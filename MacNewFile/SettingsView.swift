@@ -47,8 +47,12 @@ public struct SettingsView: View {
         }
     }
 
-    private var activeCount: Int {
-        settingsManager.settings.fileItems.filter { $0.isEnabled }.count
+    private var newFileActiveCount: Int {
+        settingsManager.settings.fileItems.filter { $0.enabledForNewFile }.count
+    }
+
+    private var quickEditorActiveCount: Int {
+        settingsManager.settings.fileItems.filter { $0.enabledForQuickEditor }.count
     }
 
     public init() {}
@@ -63,7 +67,7 @@ public struct SettingsView: View {
 
             quickEditorTab
                 .tabItem {
-                    Label("Quick Editor", systemImage: "pencil.and.outline")
+                    Label("Quick Editor", systemImage: "eye.fill")
                 }
                 .tag(1)
 
@@ -73,7 +77,7 @@ public struct SettingsView: View {
                 }
                 .tag(2)
         }
-        .frame(minWidth: 640, idealWidth: 700, minHeight: 490, idealHeight: 540)
+        .frame(minWidth: 720, idealWidth: 760, minHeight: 520, idealHeight: 560)
         .sheet(isPresented: $viewModel.isShowingAddSheet) {
             addCustomTypeSheet
         }
@@ -82,20 +86,35 @@ public struct SettingsView: View {
     // MARK: - File Types Tab
     private var fileTypesTab: some View {
         VStack(spacing: 0) {
-            // Top Bar
+            // Header Stats & Search
             VStack(spacing: 8) {
-                HStack {
-                    Image(systemName: "folder.badge.gearshape")
-                        .font(.title2)
+                HStack(alignment: .center) {
+                    Image(systemName: "slider.horizontal.2.square.badge.arrow.down")
+                        .font(.system(size: 26))
                         .foregroundColor(.accentColor)
+
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Finder Context Menu File Types")
+                        Text("Independent File Type Enablement")
                             .font(.headline)
-                        Text("\(activeCount) of \(settingsManager.settings.fileItems.count) file types enabled in right-click menu")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                        HStack(spacing: 12) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "plus.square.fill")
+                                    .foregroundColor(.blue)
+                                Text("New File Menu: \(newFileActiveCount) enabled")
+                            }
+                            Text("•").foregroundColor(.secondary)
+                            HStack(spacing: 4) {
+                                Image(systemName: "eye.fill")
+                                    .foregroundColor(.purple)
+                                Text("Quick Editor: \(quickEditorActiveCount) enabled")
+                            }
+                        }
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                     }
+
                     Spacer()
+
                     Button(action: { viewModel.isShowingAddSheet = true }) {
                         Label("Add Custom Type", systemImage: "plus")
                     }
@@ -104,12 +123,12 @@ public struct SettingsView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 14)
 
-                // Search & Category Filter
+                // Search & Category Picker
                 HStack(spacing: 12) {
                     HStack {
                         Image(systemName: "magnifyingglass")
                             .foregroundColor(.secondary)
-                        TextField("Search file types or extension...", text: $viewModel.searchText)
+                        TextField("Search name or extension...", text: $viewModel.searchText)
                             .textFieldStyle(.plain)
                         if !viewModel.searchText.isEmpty {
                             Button(action: { viewModel.searchText = "" }) {
@@ -133,30 +152,50 @@ public struct SettingsView: View {
                 }
                 .padding(.horizontal, 16)
 
-                // Bulk controls
+                // Column Headers & Bulk Controls
                 HStack {
-                    Button("Enable All") {
-                        settingsManager.setAllItems(enabled: true)
+                    HStack(spacing: 12) {
+                        Menu("New File...") {
+                            Button("Enable All") { settingsManager.setAllNewFile(enabled: true) }
+                            Button("Disable All") { settingsManager.setAllNewFile(enabled: false) }
+                        }
+                        .menuStyle(.borderlessButton)
+                        .fixedSize()
+
+                        Menu("Quick Editor...") {
+                            Button("Enable All") { settingsManager.setAllQuickEditor(enabled: true) }
+                            Button("Disable All") { settingsManager.setAllQuickEditor(enabled: false) }
+                        }
+                        .menuStyle(.borderlessButton)
+                        .fixedSize()
+
+                        Button("Reset Defaults") {
+                            settingsManager.resetToDefaults()
+                        }
+                        .buttonStyle(.link)
                     }
-                    .buttonStyle(.link)
-
-                    Text("•").foregroundColor(.secondary)
-
-                    Button("Disable All") {
-                        settingsManager.setAllItems(enabled: false)
-                    }
-                    .buttonStyle(.link)
-
-                    Text("•").foregroundColor(.secondary)
-
-                    Button("Reset to Defaults") {
-                        settingsManager.resetToDefaults()
-                    }
-                    .buttonStyle(.link)
+                    .font(.caption)
 
                     Spacer()
+
+                    // Column legend
+                    HStack(spacing: 24) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "plus.square")
+                            Text("New File")
+                        }
+                        .frame(width: 75, alignment: .trailing)
+
+                        HStack(spacing: 4) {
+                            Image(systemName: "eye")
+                            Text("Quick Edit")
+                        }
+                        .frame(width: 75, alignment: .trailing)
+                    }
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(.secondary)
+                    .padding(.trailing, 8)
                 }
-                .font(.caption)
                 .padding(.horizontal, 16)
                 .padding(.bottom, 6)
             }
@@ -164,7 +203,7 @@ public struct SettingsView: View {
 
             Divider()
 
-            // List of File Types
+            // List of File Items
             List {
                 ForEach(filteredItems) { item in
                     fileItemRow(item)
@@ -178,11 +217,11 @@ public struct SettingsView: View {
         HStack(spacing: 12) {
             Image(systemName: item.icon)
                 .font(.title3)
-                .foregroundColor(item.isEnabled ? .accentColor : .secondary)
+                .foregroundColor((item.enabledForNewFile || item.enabledForQuickEditor) ? .accentColor : .secondary)
                 .frame(width: 24)
 
             VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 8) {
+                HStack(spacing: 6) {
                     Text(item.name)
                         .font(.system(size: 13, weight: .medium))
 
@@ -194,10 +233,16 @@ public struct SettingsView: View {
                         .cornerRadius(4)
                 }
 
-                HStack(spacing: 6) {
+                HStack(spacing: 8) {
                     Text(item.category)
                         .font(.caption2)
                         .foregroundColor(.secondary)
+
+                    if let appName = item.customAppName, !appName.isEmpty {
+                        Text("Opens in \(appName)")
+                            .font(.caption2)
+                            .foregroundColor(.blue)
+                    }
 
                     if item.isCustom {
                         Text("CUSTOM")
@@ -221,17 +266,32 @@ public struct SettingsView: View {
                 }
                 .buttonStyle(.plain)
                 .help("Delete custom file type")
-                .padding(.trailing, 8)
+                .padding(.trailing, 4)
             }
 
+            // Toggle 1: New File
             Toggle("", isOn: Binding(
-                get: { item.isEnabled },
+                get: { item.enabledForNewFile },
                 set: { newValue in
-                    settingsManager.toggleFileItem(id: item.id, enabled: newValue)
+                    settingsManager.toggleNewFile(id: item.id, enabled: newValue)
                 }
             ))
             .toggleStyle(.switch)
             .labelsHidden()
+            .help("Enable in Finder right-click New File menu")
+            .frame(width: 75, alignment: .trailing)
+
+            // Toggle 2: Quick Editor
+            Toggle("", isOn: Binding(
+                get: { item.enabledForQuickEditor },
+                set: { newValue in
+                    settingsManager.toggleQuickEditor(id: item.id, enabled: newValue)
+                }
+            ))
+            .toggleStyle(.switch)
+            .labelsHidden()
+            .help("Enable preview and editing with Option+Space")
+            .frame(width: 75, alignment: .trailing)
         }
         .padding(.vertical, 4)
     }
@@ -239,7 +299,7 @@ public struct SettingsView: View {
     // MARK: - Quick Editor Tab
     private var quickEditorTab: some View {
         Form {
-            Section(header: Text("Shortcut & Activation").font(.headline)) {
+            Section(header: Text("Finder Preview Experience").font(.headline)) {
                 Picker("Global Shortcut:", selection: $settingsManager.settings.quickEditorShortcut) {
                     Text("Option + Space (⌥ Space)").tag("Option+Space")
                     Text("Command + Shift + E (⌘⇧E)").tag("Cmd+Shift+E")
@@ -248,14 +308,20 @@ public struct SettingsView: View {
                 }
                 .pickerStyle(.menu)
 
-                Text("Select a file in Finder and press this shortcut to instantly preview and edit it without opening a heavy IDE.")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("• Press shortcut on any supported file in Finder to preview and edit in-place.")
+                    Text("• Repeating the shortcut while open closes the preview (just like macOS Quick Look).")
+                    Text("• Moving arrow keys in Finder dynamically updates the preview to the selected file.")
+                    Text("• Only active for file types with 'Quick Edit' enabled in File Types tab.")
+                }
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .padding(.vertical, 2)
 
-                Toggle("Show \"Quick Edit\" in Finder context menu", isOn: $settingsManager.settings.showQuickEditInMenu)
+                Toggle("Show \"Quick Edit File\" in Finder right-click menu", isOn: $settingsManager.settings.showQuickEditInMenu)
             }
 
-            Section(header: Text("Editor Typography & Appearance").font(.headline)) {
+            Section(header: Text("Editor Appearance & Typography").font(.headline)) {
                 Picker("Font Family:", selection: $settingsManager.settings.quickEditorFontFamily) {
                     Text("SF Mono").tag("SF Mono")
                     Text("Menlo").tag("Menlo")
@@ -277,55 +343,8 @@ public struct SettingsView: View {
                 }
                 .pickerStyle(.segmented)
 
-                Toggle("Show Line Numbers", isOn: $settingsManager.settings.showLineNumbers)
+                Toggle("Show Line Numbers in Gutter", isOn: $settingsManager.settings.showLineNumbers)
                 Toggle("Soft Word Wrap", isOn: $settingsManager.settings.wordWrap)
-            }
-
-            Section(header: Text("Live Editor Preview").font(.headline)) {
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack {
-                        Circle().fill(Color.red.opacity(0.8)).frame(width: 10, height: 10)
-                        Circle().fill(Color.yellow.opacity(0.8)).frame(width: 10, height: 10)
-                        Circle().fill(Color.green.opacity(0.8)).frame(width: 10, height: 10)
-                        Spacer()
-                        Text("preview.py")
-                            .font(.system(size: 11, weight: .medium, design: .monospaced))
-                            .foregroundColor(.secondary)
-                        Spacer()
-                    }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(Color(NSColor.windowBackgroundColor))
-
-                    HStack(alignment: .top, spacing: 8) {
-                        if settingsManager.settings.showLineNumbers {
-                            VStack(alignment: .trailing, spacing: 2) {
-                                ForEach(1...5, id: \.self) { num in
-                                    Text("\(num)")
-                                        .font(.system(size: CGFloat(settingsManager.settings.quickEditorFontSize) - 1, design: .monospaced))
-                                        .foregroundColor(.secondary)
-                                }
-                            }
-                            .frame(width: 25)
-                            Divider()
-                        }
-
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("def hello_world():")
-                            Text("    message = \"Quick editing in Finder!\"")
-                            Text("    print(message)")
-                            Text("    return True")
-                            Text("hello_world()")
-                        }
-                        .font(.system(size: CGFloat(settingsManager.settings.quickEditorFontSize), design: .monospaced))
-                        .foregroundColor(settingsManager.settings.quickEditorTheme == "dark" ? .white : .primary)
-                    }
-                    .padding(10)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(settingsManager.settings.quickEditorTheme == "dark" ? Color(red: 0.12, green: 0.12, blue: 0.13) : Color(NSColor.textBackgroundColor))
-                }
-                .cornerRadius(8)
-                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.gray.opacity(0.3), lineWidth: 1))
             }
         }
         .padding(20)
@@ -334,9 +353,9 @@ public struct SettingsView: View {
     // MARK: - General Tab
     private var generalTab: some View {
         Form {
-            Section(header: Text("Finder Integration").font(.headline)) {
+            Section(header: Text("Finder Context Menu").font(.headline)) {
                 Toggle("Group \"New File\" Menu by Category", isOn: $settingsManager.settings.groupByCategory)
-                Text("When enabled, shows submenus like 'Code & Web', 'Documents & Notes'. When disabled, shows all active types in a clean flat list.")
+                Text("When enabled, groups enabled items into submenus (Code & Web, Documents, etc.). When disabled, displays them in a clean list.")
                     .font(.caption)
                     .foregroundColor(.secondary)
 
@@ -344,38 +363,22 @@ public struct SettingsView: View {
                 Toggle("Include \"Open New Terminal\" item", isOn: $settingsManager.settings.includeOpenTerminal)
             }
 
-            Section(header: Text("System & Startup").font(.headline)) {
+            Section(header: Text("System Integration").font(.headline)) {
                 Toggle("Launch MacNewFile at Login", isOn: $settingsManager.settings.launchAtLogin)
 
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Finder Extension Status")
                             .font(.system(size: 13, weight: .medium))
-                        Text("If the right-click menu does not appear in Finder, click below to re-register.")
+                        Text("Active and integrated with macOS Finder.")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
                     Spacer()
-                    Button("Refresh Extension") {
+                    Button("Restart Extension") {
                         reRegisterExtension()
                     }
                 }
-            }
-
-            Section(header: Text("About MacNewFile Enhanced").font(.headline)) {
-                HStack(spacing: 12) {
-                    Image(systemName: "plus.square.fill.on.square.fill")
-                        .font(.system(size: 32))
-                        .foregroundColor(.accentColor)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("MacNewFile Enhanced Fork")
-                            .font(.system(size: 14, weight: .bold))
-                        Text("Version 3.2.0 • On-Demand File Types & Quick Editor")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
-                .padding(.vertical, 4)
             }
         }
         .padding(20)
@@ -389,7 +392,7 @@ public struct SettingsView: View {
 
             Form {
                 TextField("File Extension (e.g. vue, svelte, dart):", text: $viewModel.newExt)
-                TextField("Display Name (e.g. Vue Single File Component):", text: $viewModel.newName)
+                TextField("Display Name (e.g. Vue Component):", text: $viewModel.newName)
 
                 Picker("Category:", selection: $viewModel.newCategory) {
                     Text("Code & Web").tag("Code & Web")
@@ -399,7 +402,7 @@ public struct SettingsView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Default Boilerplate / Template Content (optional):")
+                    Text("Default Template / Boilerplate Content:")
                         .font(.caption)
                         .foregroundColor(.secondary)
                     TextEditor(text: $viewModel.newTemplate)

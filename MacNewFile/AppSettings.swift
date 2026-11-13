@@ -1,7 +1,7 @@
 import Foundation
 
 public struct AppSettings: Codable, Equatable {
-    public var version: Int = 1
+    public var version: Int = 2
     public var fileItems: [FileItem] = []
     public var groupByCategory: Bool = false
     public var showQuickEditInMenu: Bool = true
@@ -29,7 +29,8 @@ public struct AppSettings: Codable, Equatable {
                 name: "Python Script",
                 ext: "py",
                 category: "Code & Web",
-                isEnabled: true,
+                enabledForNewFile: true,
+                enabledForQuickEditor: true,
                 template: "#!/usr/bin/env python3\n\ndef main():\n    print(\"Hello, World!\")\n\nif __name__ == '__main__':\n    main()\n",
                 icon: "chevron.left.forwardslash.chevron.right"
             ),
@@ -38,7 +39,8 @@ public struct AppSettings: Codable, Equatable {
                 name: "JavaScript File",
                 ext: "js",
                 category: "Code & Web",
-                isEnabled: true,
+                enabledForNewFile: true,
+                enabledForQuickEditor: true,
                 template: "\"use strict\";\n\nconsole.log(\"Hello, World!\");\n",
                 icon: "chevron.left.forwardslash.chevron.right"
             ),
@@ -47,7 +49,8 @@ public struct AppSettings: Codable, Equatable {
                 name: "TypeScript File",
                 ext: "ts",
                 category: "Code & Web",
-                isEnabled: true,
+                enabledForNewFile: true,
+                enabledForQuickEditor: true,
                 template: "export {};\n\nconsole.log(\"Hello TypeScript!\");\n",
                 icon: "chevron.left.forwardslash.chevron.right"
             ),
@@ -56,7 +59,8 @@ public struct AppSettings: Codable, Equatable {
                 name: "HTML Document",
                 ext: "html",
                 category: "Code & Web",
-                isEnabled: true,
+                enabledForNewFile: true,
+                enabledForQuickEditor: true,
                 template: "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"UTF-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n  <title>Document</title>\n</head>\n<body>\n  <h1>Hello, World!</h1>\n</body>\n</html>\n",
                 icon: "globe"
             ),
@@ -65,7 +69,8 @@ public struct AppSettings: Codable, Equatable {
                 name: "CSS Stylesheet",
                 ext: "css",
                 category: "Code & Web",
-                isEnabled: true,
+                enabledForNewFile: true,
+                enabledForQuickEditor: true,
                 template: "/* Styles */\n* {\n  box-sizing: border-box;\n  margin: 0;\n  padding: 0;\n}\n",
                 icon: "paintbrush"
             ),
@@ -74,7 +79,8 @@ public struct AppSettings: Codable, Equatable {
                 name: "JSON File",
                 ext: "json",
                 category: "Code & Web",
-                isEnabled: true,
+                enabledForNewFile: true,
+                enabledForQuickEditor: true,
                 template: "{\n  \n}\n",
                 icon: "curlybraces"
             ),
@@ -83,7 +89,8 @@ public struct AppSettings: Codable, Equatable {
                 name: "YAML File",
                 ext: "yaml",
                 category: "Code & Web",
-                isEnabled: true,
+                enabledForNewFile: true,
+                enabledForQuickEditor: true,
                 template: "version: \"1.0\"\n",
                 icon: "list.bullet.rectangle"
             ),
@@ -92,7 +99,8 @@ public struct AppSettings: Codable, Equatable {
                 name: "Shell Script",
                 ext: "sh",
                 category: "Code & Web",
-                isEnabled: true,
+                enabledForNewFile: true,
+                enabledForQuickEditor: true,
                 template: "#!/usr/bin/env bash\nset -euo pipefail\n\necho \"Hello from Bash!\"\n",
                 icon: "terminal"
             ),
@@ -101,7 +109,8 @@ public struct AppSettings: Codable, Equatable {
                 name: "Swift Source",
                 ext: "swift",
                 category: "Code & Web",
-                isEnabled: true,
+                enabledForNewFile: true,
+                enabledForQuickEditor: true,
                 template: "import Foundation\n\nprint(\"Hello, Swift!\")\n",
                 icon: "swift"
             ),
@@ -110,7 +119,8 @@ public struct AppSettings: Codable, Equatable {
                 name: "C Source",
                 ext: "c",
                 category: "Code & Web",
-                isEnabled: false,
+                enabledForNewFile: false,
+                enabledForQuickEditor: true,
                 template: "#include <stdio.h>\n\nint main(void) {\n    printf(\"Hello, World!\\n\");\n    return 0;\n}\n",
                 icon: "c.circle"
             ),
@@ -119,7 +129,8 @@ public struct AppSettings: Codable, Equatable {
                 name: "C++ Source",
                 ext: "cpp",
                 category: "Code & Web",
-                isEnabled: false,
+                enabledForNewFile: false,
+                enabledForQuickEditor: true,
                 template: "#include <iostream>\n\nint main() {\n    std::cout << \"Hello, World!\" << std::endl;\n    return 0;\n}\n",
                 icon: "plus.slash.minus"
             ),
@@ -128,7 +139,8 @@ public struct AppSettings: Codable, Equatable {
                 name: "C/C++ Header",
                 ext: "h",
                 category: "Code & Web",
-                isEnabled: false,
+                enabledForNewFile: false,
+                enabledForQuickEditor: true,
                 template: "#pragma once\n",
                 icon: "doc.text"
             ),
@@ -137,7 +149,8 @@ public struct AppSettings: Codable, Equatable {
                 name: "Rust Source",
                 ext: "rs",
                 category: "Code & Web",
-                isEnabled: false,
+                enabledForNewFile: false,
+                enabledForQuickEditor: true,
                 template: "fn main() {\n    println!(\"Hello, World!\");\n}\n",
                 icon: "gearshape"
             ),
@@ -146,7 +159,8 @@ public struct AppSettings: Codable, Equatable {
                 name: "Go Source",
                 ext: "go",
                 category: "Code & Web",
-                isEnabled: false,
+                enabledForNewFile: false,
+                enabledForQuickEditor: true,
                 template: "package main\n\nimport \"fmt\"\n\nfunc main() {\n    fmt.Println(\"Hello, World!\")\n}\n",
                 icon: "arrow.triangle.2.circlepath"
             ),
@@ -155,7 +169,8 @@ public struct AppSettings: Codable, Equatable {
                 name: "SQL Script",
                 ext: "sql",
                 category: "Code & Web",
-                isEnabled: false,
+                enabledForNewFile: false,
+                enabledForQuickEditor: true,
                 template: "-- SQL Query\nSELECT 1;\n",
                 icon: "cylinder"
             ),
@@ -164,7 +179,8 @@ public struct AppSettings: Codable, Equatable {
                 name: "XML Document",
                 ext: "xml",
                 category: "Code & Web",
-                isEnabled: false,
+                enabledForNewFile: false,
+                enabledForQuickEditor: true,
                 template: "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<root>\n</root>\n",
                 icon: "chevron.left.forwardslash.chevron.right"
             ),
@@ -175,7 +191,8 @@ public struct AppSettings: Codable, Equatable {
                 name: "Text File",
                 ext: "txt",
                 category: "Documents & Notes",
-                isEnabled: true,
+                enabledForNewFile: true,
+                enabledForQuickEditor: true,
                 template: "",
                 icon: "doc.text"
             ),
@@ -184,7 +201,8 @@ public struct AppSettings: Codable, Equatable {
                 name: "Markdown Document",
                 ext: "md",
                 category: "Documents & Notes",
-                isEnabled: true,
+                enabledForNewFile: true,
+                enabledForQuickEditor: true,
                 template: "# Title\n\n",
                 icon: "doc.plaintext"
             ),
@@ -193,7 +211,8 @@ public struct AppSettings: Codable, Equatable {
                 name: "Rich Text Document",
                 ext: "rtf",
                 category: "Documents & Notes",
-                isEnabled: false,
+                enabledForNewFile: false,
+                enabledForQuickEditor: true,
                 template: "{\\rtf1\\ansi\\deff0 {\\fonttbl {\\f0 Arial;}}\\f0\\fs24 \\par}",
                 icon: "doc.richtext"
             ),
@@ -202,7 +221,8 @@ public struct AppSettings: Codable, Equatable {
                 name: "Microsoft Word Document",
                 ext: "docx",
                 category: "Documents & Notes",
-                isEnabled: true,
+                enabledForNewFile: true,
+                enabledForQuickEditor: false,
                 template: "",
                 icon: "doc.fill",
                 creatorType: "docx"
@@ -212,7 +232,8 @@ public struct AppSettings: Codable, Equatable {
                 name: "Microsoft Excel Spreadsheet",
                 ext: "xlsx",
                 category: "Documents & Notes",
-                isEnabled: true,
+                enabledForNewFile: true,
+                enabledForQuickEditor: false,
                 template: "",
                 icon: "tablecells",
                 creatorType: "xlsx"
@@ -222,7 +243,8 @@ public struct AppSettings: Codable, Equatable {
                 name: "Microsoft PowerPoint Presentation",
                 ext: "pptx",
                 category: "Documents & Notes",
-                isEnabled: true,
+                enabledForNewFile: true,
+                enabledForQuickEditor: false,
                 template: "",
                 icon: "play.rectangle",
                 creatorType: "pptx"
@@ -232,7 +254,8 @@ public struct AppSettings: Codable, Equatable {
                 name: "Apple Pages Document",
                 ext: "pages",
                 category: "Documents & Notes",
-                isEnabled: true,
+                enabledForNewFile: true,
+                enabledForQuickEditor: false,
                 template: "",
                 icon: "doc.text.fill",
                 creatorType: "pages"
@@ -242,7 +265,8 @@ public struct AppSettings: Codable, Equatable {
                 name: "Apple Numbers Spreadsheet",
                 ext: "numbers",
                 category: "Documents & Notes",
-                isEnabled: true,
+                enabledForNewFile: true,
+                enabledForQuickEditor: false,
                 template: "",
                 icon: "chart.bar",
                 creatorType: "numbers"
@@ -252,7 +276,8 @@ public struct AppSettings: Codable, Equatable {
                 name: "Apple Keynote Presentation",
                 ext: "key",
                 category: "Documents & Notes",
-                isEnabled: true,
+                enabledForNewFile: true,
+                enabledForQuickEditor: false,
                 template: "",
                 icon: "tv",
                 creatorType: "key"
@@ -264,7 +289,8 @@ public struct AppSettings: Codable, Equatable {
                 name: "CSV Spreadsheet",
                 ext: "csv",
                 category: "Data & Config",
-                isEnabled: true,
+                enabledForNewFile: true,
+                enabledForQuickEditor: true,
                 template: "Column1,Column2,Column3\n",
                 icon: "tablecells"
             ),
@@ -273,7 +299,8 @@ public struct AppSettings: Codable, Equatable {
                 name: "TSV File",
                 ext: "tsv",
                 category: "Data & Config",
-                isEnabled: false,
+                enabledForNewFile: false,
+                enabledForQuickEditor: true,
                 template: "Col1\tCol2\tCol3\n",
                 icon: "tablecells"
             ),
@@ -282,7 +309,8 @@ public struct AppSettings: Codable, Equatable {
                 name: "Environment File",
                 ext: "env",
                 category: "Data & Config",
-                isEnabled: true,
+                enabledForNewFile: true,
+                enabledForQuickEditor: true,
                 template: "# Environment Variables\nNODE_ENV=development\nPORT=3000\n",
                 icon: "gear"
             ),
@@ -291,7 +319,8 @@ public struct AppSettings: Codable, Equatable {
                 name: "INI Configuration",
                 ext: "ini",
                 category: "Data & Config",
-                isEnabled: false,
+                enabledForNewFile: false,
+                enabledForQuickEditor: true,
                 template: "[General]\nkey=value\n",
                 icon: "slider.horizontal.3"
             ),
@@ -300,7 +329,8 @@ public struct AppSettings: Codable, Equatable {
                 name: "TOML Configuration",
                 ext: "toml",
                 category: "Data & Config",
-                isEnabled: false,
+                enabledForNewFile: false,
+                enabledForQuickEditor: true,
                 template: "[general]\nkey = \"value\"\n",
                 icon: "slider.horizontal.3"
             ),
@@ -309,7 +339,8 @@ public struct AppSettings: Codable, Equatable {
                 name: "Log File",
                 ext: "log",
                 category: "Data & Config",
-                isEnabled: false,
+                enabledForNewFile: false,
+                enabledForQuickEditor: true,
                 template: "",
                 icon: "scroll"
             )

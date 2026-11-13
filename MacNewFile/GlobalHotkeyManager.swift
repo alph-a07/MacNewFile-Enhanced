@@ -44,6 +44,14 @@ public class GlobalHotkeyManager: NSObject {
             DispatchQueue.main.async { [weak self] in
                 self?.handleHotKeyTriggered()
             }
+        } else if shortcut == "Ctrl+Opt+N" && flags == [.control, .option] && event.keyCode == 45 {
+            DispatchQueue.main.async { [weak self] in
+                self?.handleHotKeyTriggered()
+            }
+        } else if shortcut == "Cmd+Opt+E" && flags == [.command, .option] && event.keyCode == 14 {
+            DispatchQueue.main.async { [weak self] in
+                self?.handleHotKeyTriggered()
+            }
         }
     }
 
@@ -76,8 +84,6 @@ public class GlobalHotkeyManager: NSObject {
         hotKeyID.id = 1
 
         var eventType = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
-
-        // In Cocoa, GetEventDispatcherTarget() receives carbon hotkeys reliably
         let target = GetEventDispatcherTarget()
 
         InstallEventHandler(target, { (nextHandler, event, userData) -> OSStatus in
@@ -107,12 +113,42 @@ public class GlobalHotkeyManager: NSObject {
     }
 
     @objc public func handleHotKeyTriggered() {
-        // Query Finder for currently selected file
-        if let selectedPath = getFinderSelectedFilePath() {
-            QuickEditorWindowController.shared.openFile(atPath: selectedPath)
-        } else {
-            // Open editor with new draft buffer if no specific file selected
-            QuickEditorWindowController.shared.openNewDraft()
+        let editor = QuickEditorWindowController.shared
+        let isVisible = editor.window?.isVisible ?? false
+        let selectedPath = getFinderSelectedFilePath()
+
+        // 1. Repeating shortcut while quick editor is open closes it (like Finder preview)
+        if isVisible {
+            if let path = selectedPath {
+                // If on same file: close
+                if path == editor.currentFileURL?.path {
+                    editor.closeWindow()
+                    return
+                }
+
+                // If on different file: switch if enabled, otherwise close
+                let ext = URL(fileURLWithPath: path).pathExtension.lowercased()
+                if SettingsManager.shared.isExtensionEnabledForQuickEditor(ext: ext) {
+                    editor.openFile(atPath: path)
+                    return
+                } else {
+                    editor.closeWindow()
+                    return
+                }
+            } else {
+                editor.closeWindow()
+                return
+            }
+        }
+
+        // 2. Not open: only open if the selected file type is supported and enabled by user!
+        if let path = selectedPath {
+            let ext = URL(fileURLWithPath: path).pathExtension.lowercased()
+            if SettingsManager.shared.isExtensionEnabledForQuickEditor(ext: ext) {
+                editor.openFile(atPath: path)
+            } else {
+                NSSound.beep()
+            }
         }
     }
 

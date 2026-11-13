@@ -1,12 +1,13 @@
 import Cocoa
 import SwiftUI
+import UniformTypeIdentifiers
 
 @objc(QuickEditorWindowController)
 public class QuickEditorWindowController: NSWindowController, NSTextViewDelegate, NSWindowDelegate {
     @objc(sharedController)
     public static let shared = QuickEditorWindowController()
 
-    private var currentFileURL: URL?
+    public private(set) var currentFileURL: URL?
     private var isModified: Bool = false {
         didSet {
             updateStatusUI()
@@ -16,24 +17,34 @@ public class QuickEditorWindowController: NSWindowController, NSTextViewDelegate
     private var textView: NSTextView!
     private var scrollView: NSScrollView!
     private var gutterView: LineNumberGutterView?
+    private var backgroundVisualEffect: NSVisualEffectView!
     private var titleLabel: NSTextField!
     private var pathLabel: NSTextField!
     private var statusLabel: NSTextField!
-    private var saveButton: NSButton!
+    private var saveIndicatorLabel: NSTextField!
     private var iconImageView: NSImageView!
+    private var openWithButton: NSPopUpButton!
+
+    private var selectionPollingTimer: Timer?
+    private var compatibleApps: [URL] = []
 
     private init() {
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 780, height: 560),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+        let panel = NSPanel(
+            contentRect: NSRect(x: 0, y: 0, width: 720, height: 520),
+            styleMask: [.titled, .closable, .resizable, .fullSizeContentView, .nonactivatingPanel],
             backing: .buffered,
             defer: false
         )
-        window.center()
-        window.title = "MacNewFile Quick Editor"
-        window.isReleasedWhenClosed = false
-        super.init(window: window)
-        window.delegate = self
+        panel.isFloatingPanel = true
+        panel.level = .floating
+        panel.titlebarAppearsTransparent = true
+        panel.titleVisibility = .hidden
+        panel.isMovableByWindowBackground = true
+        panel.hasShadow = true
+        panel.center()
+        panel.isReleasedWhenClosed = false
+        super.init(window: panel)
+        panel.delegate = self
         setupUI()
     }
 
@@ -44,67 +55,68 @@ public class QuickEditorWindowController: NSWindowController, NSTextViewDelegate
     private func setupUI() {
         guard let window = self.window else { return }
 
-        let container = NSView(frame: window.contentView!.bounds)
-        container.autoresizingMask = [.width, .height]
-        window.contentView = container
+        // Root container with dark/vibrant HUD background like Quick Look
+        backgroundVisualEffect = NSVisualEffectView(frame: window.contentView!.bounds)
+        backgroundVisualEffect.autoresizingMask = [.width, .height]
+        backgroundVisualEffect.material = .hudWindow
+        backgroundVisualEffect.blendingMode = .behindWindow
+        backgroundVisualEffect.state = .active
+        window.contentView = backgroundVisualEffect
 
-        // 1. Top Header Bar (VS Code style titlebar)
-        let headerHeight: CGFloat = 46.0
-        let headerView = NSVisualEffectView(frame: NSRect(x: 0, y: container.bounds.height - headerHeight, width: container.bounds.width, height: headerHeight))
+        let container = backgroundVisualEffect!
+
+        // Top Bar (Quick Look style header)
+        let headerHeight: CGFloat = 44.0
+        let headerView = NSView(frame: NSRect(x: 0, y: container.bounds.height - headerHeight, width: container.bounds.width, height: headerHeight))
         headerView.autoresizingMask = [.width, .minYMargin]
-        headerView.material = .headerView
-        headerView.blendingMode = .withinWindow
-        headerView.state = .active
         container.addSubview(headerView)
 
-        // Header Border
-        let headerBorder = NSBox(frame: NSRect(x: 0, y: 0, width: headerView.bounds.width, height: 1))
-        headerBorder.boxType = .separator
-        headerBorder.autoresizingMask = [.width, .maxYMargin]
-        headerView.addSubview(headerBorder)
-
         // File icon
-        iconImageView = NSImageView(frame: NSRect(x: 16, y: 11, width: 24, height: 24))
-        iconImageView.image = NSImage(systemSymbolName: "doc.text", accessibilityDescription: "File")
+        iconImageView = NSImageView(frame: NSRect(x: 64, y: 10, width: 22, height: 22))
+        iconImageView.imageScaling = .scaleProportionallyUpOrDown
         headerView.addSubview(iconImageView)
 
-        // Title and Path
+        // Title and Folder path
         titleLabel = NSTextField(labelWithString: "Untitled")
         titleLabel.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
-        titleLabel.frame = NSRect(x: 48, y: 22, width: 450, height: 18)
+        titleLabel.textColor = .labelColor
+        titleLabel.frame = NSRect(x: 92, y: 20, width: 320, height: 18)
         headerView.addSubview(titleLabel)
 
         pathLabel = NSTextField(labelWithString: "")
         pathLabel.font = NSFont.systemFont(ofSize: 11, weight: .regular)
         pathLabel.textColor = .secondaryLabelColor
-        pathLabel.frame = NSRect(x: 48, y: 6, width: 450, height: 16)
+        pathLabel.frame = NSRect(x: 92, y: 6, width: 320, height: 15)
         headerView.addSubview(pathLabel)
 
-        // "Open in Default App" button
-        let openInAppButton = NSButton(title: "Open in App", target: self, action: #selector(openInDefaultApp))
-        openInAppButton.bezelStyle = .rounded
-        openInAppButton.font = NSFont.systemFont(ofSize: 12)
-        openInAppButton.frame = NSRect(x: headerView.bounds.width - 190, y: 10, width: 100, height: 26)
-        openInAppButton.autoresizingMask = [.minXMargin, .minYMargin]
-        headerView.addSubview(openInAppButton)
+        // Save Status Indicator
+        saveIndicatorLabel = NSTextField(labelWithString: "")
+        saveIndicatorLabel.font = NSFont.systemFont(ofSize: 11, weight: .medium)
+        saveIndicatorLabel.textColor = .secondaryLabelColor
+        saveIndicatorLabel.alignment = .right
+        saveIndicatorLabel.frame = NSRect(x: headerView.bounds.width - 330, y: 14, width: 100, height: 16)
+        saveIndicatorLabel.autoresizingMask = [.minXMargin, .minYMargin]
+        headerView.addSubview(saveIndicatorLabel)
 
-        // "Save" button
-        saveButton = NSButton(title: "Save (⌘S)", target: self, action: #selector(saveFile))
-        saveButton.bezelStyle = .rounded
-        saveButton.keyEquivalent = "s"
-        saveButton.keyEquivalentModifierMask = .command
-        saveButton.font = NSFont.systemFont(ofSize: 12, weight: .medium)
-        saveButton.frame = NSRect(x: headerView.bounds.width - 86, y: 10, width: 74, height: 26)
-        saveButton.autoresizingMask = [.minXMargin, .minYMargin]
-        headerView.addSubview(saveButton)
+        // "Open with..." PopUp Menu Button (Quick Look style)
+        openWithButton = NSPopUpButton(frame: NSRect(x: headerView.bounds.width - 215, y: 8, width: 200, height: 26), pullsDown: false)
+        openWithButton.bezelStyle = .rounded
+        openWithButton.font = NSFont.systemFont(ofSize: 12, weight: .medium)
+        openWithButton.autoresizingMask = [.minXMargin, .minYMargin]
+        openWithButton.target = self
+        openWithButton.action = #selector(handleOpenWithSelection(_:))
+        headerView.addSubview(openWithButton)
 
-        // 2. Bottom Status Bar (VS Code style footer)
-        let footerHeight: CGFloat = 26.0
-        let footerView = NSVisualEffectView(frame: NSRect(x: 0, y: 0, width: container.bounds.width, height: footerHeight))
+        // Header bottom separator line
+        let headerBorder = NSBox(frame: NSRect(x: 0, y: 0, width: headerView.bounds.width, height: 1))
+        headerBorder.boxType = .separator
+        headerBorder.autoresizingMask = [.width, .maxYMargin]
+        headerView.addSubview(headerBorder)
+
+        // Bottom Status Bar
+        let footerHeight: CGFloat = 24.0
+        let footerView = NSView(frame: NSRect(x: 0, y: 0, width: container.bounds.width, height: footerHeight))
         footerView.autoresizingMask = [.width, .maxYMargin]
-        footerView.material = .headerView
-        footerView.blendingMode = .withinWindow
-        footerView.state = .active
         container.addSubview(footerView)
 
         let footerBorder = NSBox(frame: NSRect(x: 0, y: footerHeight - 1, width: footerView.bounds.width, height: 1))
@@ -115,17 +127,18 @@ public class QuickEditorWindowController: NSWindowController, NSTextViewDelegate
         statusLabel = NSTextField(labelWithString: "Ready")
         statusLabel.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
         statusLabel.textColor = .secondaryLabelColor
-        statusLabel.frame = NSRect(x: 14, y: 5, width: footerView.bounds.width - 28, height: 16)
+        statusLabel.frame = NSRect(x: 16, y: 4, width: footerView.bounds.width - 32, height: 16)
         statusLabel.autoresizingMask = [.width]
         footerView.addSubview(statusLabel)
 
-        // 3. Middle Editor Text View & Scroll View
+        // Scroll & Text View
         let editorRect = NSRect(x: 0, y: footerHeight, width: container.bounds.width, height: container.bounds.height - headerHeight - footerHeight)
         scrollView = NSScrollView(frame: editorRect)
         scrollView.autoresizingMask = [.width, .height]
         scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalScroller = true
         scrollView.borderType = .noBorder
+        scrollView.drawsBackground = false
 
         let contentSize = scrollView.contentSize
         textView = NSTextView(frame: NSRect(origin: .zero, size: contentSize))
@@ -136,17 +149,19 @@ public class QuickEditorWindowController: NSWindowController, NSTextViewDelegate
         textView.autoresizingMask = [.width]
         textView.delegate = self
         textView.allowsUndo = true
+        textView.isRichText = false
+        textView.importsGraphics = false
+        textView.usesFontPanel = false
         textView.isAutomaticQuoteSubstitutionEnabled = false
         textView.isAutomaticDashSubstitutionEnabled = false
         textView.isAutomaticTextReplacementEnabled = false
         textView.isAutomaticSpellingCorrectionEnabled = false
-        textView.textContainerInset = NSMakeSize(8, 8)
-
-        applySettingsAppearance()
+        textView.textContainerInset = NSMakeSize(10, 10)
+        textView.drawsBackground = false
 
         scrollView.documentView = textView
 
-        // Setup Line Numbers Gutter
+        // Line Numbers Gutter
         gutterView = LineNumberGutterView(textView: textView)
         scrollView.verticalRulerView = gutterView
         scrollView.rulersVisible = SettingsManager.shared.settings.showLineNumbers
@@ -154,36 +169,43 @@ public class QuickEditorWindowController: NSWindowController, NSTextViewDelegate
         container.addSubview(scrollView)
     }
 
-    private func applySettingsAppearance() {
+    private func resolveEditorColors() -> (textColor: NSColor, bgColor: NSColor) {
+        let settings = SettingsManager.shared.settings
+        if settings.quickEditorTheme == "dark" {
+            return (NSColor(white: 0.92, alpha: 1.0), NSColor(calibratedRed: 0.12, green: 0.12, blue: 0.13, alpha: 0.95))
+        } else if settings.quickEditorTheme == "light" {
+            return (NSColor.black, NSColor(white: 0.98, alpha: 0.95))
+        } else {
+            // System match
+            let isDark = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            let textCol = isDark ? NSColor(white: 0.92, alpha: 1.0) : NSColor.textColor
+            let bgCol = isDark ? NSColor(white: 0.14, alpha: 0.95) : NSColor(white: 0.98, alpha: 0.95)
+            return (textCol, bgCol)
+        }
+    }
+
+    private func resolveFont() -> NSFont {
         let settings = SettingsManager.shared.settings
         var fontSize = CGFloat(settings.quickEditorFontSize)
         if fontSize < 10 { fontSize = 13 }
 
-        var font: NSFont
         if settings.quickEditorFontFamily == "Menlo" {
-            font = NSFont(name: "Menlo", size: fontSize) ?? NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
+            return NSFont(name: "Menlo", size: fontSize) ?? NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
         } else if settings.quickEditorFontFamily == "Courier New" {
-            font = NSFont(name: "Courier New", size: fontSize) ?? NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
+            return NSFont(name: "Courier New", size: fontSize) ?? NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
         } else {
-            font = NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
+            return NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
         }
+    }
+
+    private func applySettingsAppearance() {
+        let settings = SettingsManager.shared.settings
+        let font = resolveFont()
+        let colors = resolveEditorColors()
 
         textView.font = font
-
-        if settings.quickEditorTheme == "dark" {
-            textView.backgroundColor = NSColor(calibratedRed: 0.12, green: 0.12, blue: 0.13, alpha: 1.0)
-            textView.textColor = NSColor(calibratedRed: 0.9, green: 0.9, blue: 0.9, alpha: 1.0)
-            textView.insertionPointColor = NSColor.white
-        } else if settings.quickEditorTheme == "light" {
-            textView.backgroundColor = NSColor.white
-            textView.textColor = NSColor.black
-            textView.insertionPointColor = NSColor.black
-        } else {
-            // System match
-            textView.backgroundColor = NSColor.textBackgroundColor
-            textView.textColor = NSColor.textColor
-            textView.insertionPointColor = NSColor.controlAccentColor
-        }
+        textView.textColor = colors.textColor
+        textView.insertionPointColor = colors.textColor
 
         if settings.wordWrap {
             textView.isHorizontallyResizable = false
@@ -205,20 +227,16 @@ public class QuickEditorWindowController: NSWindowController, NSTextViewDelegate
         self.currentFileURL = nil
         applySettingsAppearance()
 
-        textView.string = ""
+        setTextContent("")
         isModified = false
 
         titleLabel.stringValue = "Untitled"
         pathLabel.stringValue = "New Scratch Buffer (⌘S to Save)"
-        window?.title = "Untitled — MacNewFile Quick Editor"
         iconImageView.image = NSImage(systemSymbolName: "doc.text", accessibilityDescription: "File")
 
+        updateOpenWithMenu(forExtension: "txt")
         updateStatusUI()
-
-        showWindow(nil)
-        window?.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
-        textView.window?.makeFirstResponder(textView)
+        presentPanel()
     }
 
     @objc public func openFile(atPath path: String) {
@@ -227,22 +245,27 @@ public class QuickEditorWindowController: NSWindowController, NSTextViewDelegate
     }
 
     @objc public func openFile(at url: URL) {
+        // If current file has unsaved changes, auto-save before switching to the new selection
+        if isModified && currentFileURL != nil {
+            saveFile()
+        }
+
         self.currentFileURL = url
         applySettingsAppearance()
 
         do {
             let data = try Data(contentsOf: url)
             if let content = String(data: data, encoding: .utf8) {
-                textView.string = content
+                setTextContent(content)
             } else if let content = String(data: data, encoding: .isoLatin1) {
-                textView.string = content
+                setTextContent(content)
             } else {
-                textView.string = "// Warning: File appears to be binary or unsupported encoding.\n"
+                setTextContent("// Warning: Binary file or unsupported encoding.\n")
             }
             isModified = false
         } catch {
             NSLog("[MacNewFile] Error reading file: %@", error.localizedDescription)
-            textView.string = "// Error reading file: \(error.localizedDescription)"
+            setTextContent("// Error reading file: \(error.localizedDescription)")
             isModified = false
         }
 
@@ -251,34 +274,165 @@ public class QuickEditorWindowController: NSWindowController, NSTextViewDelegate
         let dirPath = url.deletingLastPathComponent().path
         titleLabel.stringValue = fileName
         pathLabel.stringValue = dirPath
-        window?.title = "\(fileName) — MacNewFile Quick Editor"
 
-        // Set file icon
+        // Apple document icon
         let icon = NSWorkspace.shared.icon(forFile: url.path)
+        icon.size = NSMakeSize(22, 22)
         iconImageView.image = icon
 
+        updateOpenWithMenu(forExtension: url.pathExtension)
         updateStatusUI()
+        presentPanel()
+    }
 
-        // Bring window to front
+    private func setTextContent(_ content: String) {
+        let font = resolveFont()
+        let colors = resolveEditorColors()
+
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: font,
+            .foregroundColor: colors.textColor
+        ]
+
+        let attrString = NSAttributedString(string: content, attributes: attributes)
+        textView.textStorage?.setAttributedString(attrString)
+        textView.typingAttributes = attributes
+        textView.font = font
+        textView.textColor = colors.textColor
+        textView.needsDisplay = true
+        gutterView?.needsDisplay = true
+    }
+
+    private func presentPanel() {
         showWindow(nil)
         window?.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
         textView.window?.makeFirstResponder(textView)
+        startSelectionPolling()
+    }
+
+    // MARK: - Responsive Finder Selection Polling
+    private func startSelectionPolling() {
+        selectionPollingTimer?.invalidate()
+        selectionPollingTimer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in
+            self?.checkFinderSelectionChange()
+        }
+    }
+
+    private func stopSelectionPolling() {
+        selectionPollingTimer?.invalidate()
+        selectionPollingTimer = nil
+    }
+
+    private func checkFinderSelectionChange() {
+        guard let window = self.window, window.isVisible else {
+            stopSelectionPolling()
+            return
+        }
+
+        // Only track selection when Finder is the frontmost application
+        if let frontApp = NSWorkspace.shared.frontmostApplication, frontApp.bundleIdentifier == "com.apple.finder" {
+            if let selectedPath = GlobalHotkeyManager.shared.getFinderSelectedFilePath() {
+                let selectedURL = URL(fileURLWithPath: selectedPath)
+                if selectedURL.path != currentFileURL?.path {
+                    let ext = selectedURL.pathExtension.lowercased()
+                    // Only switch if this file type is supported and enabled for Quick Editor!
+                    if SettingsManager.shared.isExtensionEnabledForQuickEditor(ext: ext) {
+                        openFile(at: selectedURL)
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Compatible Apps Discovery & Selection
+    private func updateOpenWithMenu(forExtension ext: String) {
+        openWithButton.removeAllItems()
+        compatibleApps.removeAll()
+
+        guard let url = currentFileURL else {
+            openWithButton.addItem(withTitle: "Open in App")
+            openWithButton.isEnabled = false
+            return
+        }
+
+        openWithButton.isEnabled = true
+        let appURLs = NSWorkspace.shared.urlsForApplications(toOpen: url)
+        self.compatibleApps = appURLs
+
+        let (preferredBundleId, _) = SettingsManager.shared.getPreferredApp(forExtension: ext)
+
+        var selectedIndex = 0
+        for (index, appURL) in appURLs.enumerated() {
+            let bundle = Bundle(url: appURL)
+            let appName = bundle?.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String
+                ?? bundle?.object(forInfoDictionaryKey: "CFBundleName") as? String
+                ?? appURL.deletingPathExtension().lastPathComponent
+
+            let item = NSMenuItem(title: "Open with \(appName)", action: nil, keyEquivalent: "")
+            let icon = NSWorkspace.shared.icon(forFile: appURL.path)
+            icon.size = NSMakeSize(16, 16)
+            item.image = icon
+            item.representedObject = appURL
+
+            openWithButton.menu?.addItem(item)
+
+            if let preferred = preferredBundleId, bundle?.bundleIdentifier == preferred {
+                selectedIndex = index
+            }
+        }
+
+        if openWithButton.numberOfItems == 0 {
+            openWithButton.addItem(withTitle: "Open with Default")
+        } else {
+            openWithButton.selectItem(at: selectedIndex)
+        }
+    }
+
+    @objc private func handleOpenWithSelection(_ sender: NSPopUpButton) {
+        guard let selectedItem = sender.selectedItem,
+              let appURL = selectedItem.representedObject as? URL,
+              let fileURL = currentFileURL else {
+            if let fileURL = currentFileURL {
+                NSWorkspace.shared.open(fileURL)
+            }
+            return
+        }
+
+        // Save preference for this extension
+        let bundle = Bundle(url: appURL)
+        let appName = selectedItem.title.replacingOccurrences(of: "Open with ", with: "")
+        SettingsManager.shared.setPreferredApp(
+            bundleId: bundle?.bundleIdentifier,
+            name: appName,
+            forExtension: fileURL.pathExtension
+        )
+
+        // Open file in chosen app
+        let config = NSWorkspace.OpenConfiguration()
+        NSWorkspace.shared.open([fileURL], withApplicationAt: appURL, configuration: config, completionHandler: nil)
+    }
+
+    @objc public func openInCurrentPreferredApp() {
+        if let selectedItem = openWithButton.selectedItem,
+           let appURL = selectedItem.representedObject as? URL,
+           let fileURL = currentFileURL {
+            let config = NSWorkspace.OpenConfiguration()
+            NSWorkspace.shared.open([fileURL], withApplicationAt: appURL, configuration: config, completionHandler: nil)
+        } else if let fileURL = currentFileURL {
+            NSWorkspace.shared.open(fileURL)
+        }
     }
 
     // MARK: - Actions
     @objc public func saveFile() {
         guard let url = currentFileURL else {
-            // No file URL, show Save Panel
             let savePanel = NSSavePanel()
             savePanel.title = "Save New File"
             savePanel.nameFieldStringValue = "Untitled.txt"
-            NSApp.activate(ignoringOtherApps: true)
             if savePanel.runModal() == .OK, let targetURL = savePanel.url {
                 self.currentFileURL = targetURL
                 titleLabel.stringValue = targetURL.lastPathComponent
                 pathLabel.stringValue = targetURL.deletingLastPathComponent().path
-                window?.title = "\(targetURL.lastPathComponent) — MacNewFile Quick Editor"
                 saveFile()
             }
             return
@@ -289,11 +443,11 @@ public class QuickEditorWindowController: NSWindowController, NSTextViewDelegate
             try content.write(to: url, atomically: true, encoding: .utf8)
             isModified = false
 
-            // Visual feedback
-            let oldTitle = saveButton.title
-            saveButton.title = "Saved ✓"
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
-                self?.saveButton.title = oldTitle
+            saveIndicatorLabel.stringValue = "Saved ✓"
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+                if !(self?.isModified ?? false) {
+                    self?.saveIndicatorLabel.stringValue = ""
+                }
             }
         } catch {
             let alert = NSAlert()
@@ -304,9 +458,9 @@ public class QuickEditorWindowController: NSWindowController, NSTextViewDelegate
         }
     }
 
-    @objc public func openInDefaultApp() {
-        guard let url = currentFileURL else { return }
-        NSWorkspace.shared.open(url)
+    @objc public func closeWindow() {
+        window?.orderOut(nil)
+        stopSelectionPolling()
     }
 
     public func textDidChange(_ notification: Notification) {
@@ -320,18 +474,21 @@ public class QuickEditorWindowController: NSWindowController, NSTextViewDelegate
         let lineCount = content.isEmpty ? 1 : content.components(separatedBy: "\n").count
         let charCount = content.count
         let ext = currentFileURL?.pathExtension.uppercased() ?? "TXT"
-        let dirtyText = isModified ? "● Modified" : "Saved ✓"
 
-        statusLabel.stringValue = "\(dirtyText)  |  \(lineCount) lines, \(charCount) chars  |  UTF-8  |  \(ext)"
-        saveButton.isEnabled = isModified
+        statusLabel.stringValue = "\(lineCount) lines, \(charCount) chars  •  UTF-8  •  \(ext)"
+        saveIndicatorLabel.stringValue = isModified ? "● Modified" : ""
     }
 
     // MARK: - Window Delegate
+    public func windowWillClose(_ notification: Notification) {
+        stopSelectionPolling()
+    }
+
     public func windowShouldClose(_ sender: NSWindow) -> Bool {
         if isModified {
             let alert = NSAlert()
-            alert.messageText = "Unsaved Changes"
-            alert.informativeText = "Do you want to save the changes you made to \"\(currentFileURL?.lastPathComponent ?? "file")\"?"
+            alert.messageText = "Save changes before closing?"
+            alert.informativeText = "Changes to \"\(currentFileURL?.lastPathComponent ?? "file")\" will be lost if you don't save."
             alert.addButton(withTitle: "Save")
             alert.addButton(withTitle: "Don't Save")
             alert.addButton(withTitle: "Cancel")

@@ -91,7 +91,8 @@ public class SettingsManager: NSObject, ObservableObject {
             name: cleanName,
             ext: cleanExt,
             category: category.isEmpty ? "Custom" : category,
-            isEnabled: true,
+            enabledForNewFile: true,
+            enabledForQuickEditor: true,
             isCustom: true,
             template: template,
             icon: "doc.badge.plus",
@@ -107,16 +108,57 @@ public class SettingsManager: NSObject, ObservableObject {
         saveSettings()
     }
 
-    public func toggleFileItem(id: String, enabled: Bool) {
+    public func toggleNewFile(id: String, enabled: Bool) {
         if let idx = settings.fileItems.firstIndex(where: { $0.id == id }) {
-            settings.fileItems[idx].isEnabled = enabled
+            settings.fileItems[idx].enabledForNewFile = enabled
             saveSettings()
         }
     }
 
-    public func setAllItems(enabled: Bool) {
+    public func toggleQuickEditor(id: String, enabled: Bool) {
+        if let idx = settings.fileItems.firstIndex(where: { $0.id == id }) {
+            settings.fileItems[idx].enabledForQuickEditor = enabled
+            saveSettings()
+        }
+    }
+
+    public func setPreferredApp(bundleId: String?, name: String?, forExtension ext: String) {
+        let cleanExt = ext.trimmingCharacters(in: CharacterSet(charactersIn: ". ")).lowercased()
         for idx in settings.fileItems.indices {
-            settings.fileItems[idx].isEnabled = enabled
+            if settings.fileItems[idx].ext == cleanExt {
+                settings.fileItems[idx].customAppBundleIdentifier = bundleId
+                settings.fileItems[idx].customAppName = name
+            }
+        }
+        saveSettings()
+    }
+
+    public func getPreferredApp(forExtension ext: String) -> (bundleId: String?, name: String?) {
+        let cleanExt = ext.trimmingCharacters(in: CharacterSet(charactersIn: ". ")).lowercased()
+        if let item = settings.fileItems.first(where: { $0.ext == cleanExt }) {
+            return (item.customAppBundleIdentifier, item.customAppName)
+        }
+        return (nil, nil)
+    }
+
+    @objc public func isExtensionEnabledForQuickEditor(ext: String) -> Bool {
+        let cleanExt = ext.trimmingCharacters(in: CharacterSet(charactersIn: ". ")).lowercased()
+        if let item = settings.fileItems.first(where: { $0.ext == cleanExt }) {
+            return item.enabledForQuickEditor
+        }
+        return false
+    }
+
+    public func setAllNewFile(enabled: Bool) {
+        for idx in settings.fileItems.indices {
+            settings.fileItems[idx].enabledForNewFile = enabled
+        }
+        saveSettings()
+    }
+
+    public func setAllQuickEditor(enabled: Bool) {
+        for idx in settings.fileItems.indices {
+            settings.fileItems[idx].enabledForQuickEditor = enabled
         }
         saveSettings()
     }
