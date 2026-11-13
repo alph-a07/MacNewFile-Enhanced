@@ -207,6 +207,39 @@ static NSMutableDictionary<NSString *, NSImage *> *sIconCache = nil;
 
 #pragma mark - High-Performance Cached SF Symbol Icons
 
+- (NSImage *)templateIconForSymbol:(NSString *)symbolName {
+    if (!symbolName || symbolName.length == 0) return nil;
+    if (!@available(macOS 11.0, *)) return nil;
+
+    NSImage *baseSym = [NSImage imageWithSystemSymbolName:symbolName accessibilityDescription:nil];
+    if (!baseSym) return nil;
+
+    NSImage *image = [NSImage imageWithSize:NSMakeSize(16, 16) flipped:NO drawingHandler:^BOOL(NSRect dstRect) {
+        NSAppearance *appearance = [NSAppearance currentDrawingAppearance];
+        BOOL isDark = [appearance.name.lowercaseString containsString:@"dark"];
+        NSColor *tintColor = isDark ? [NSColor whiteColor] : [NSColor colorWithWhite:0.12 alpha:1.0];
+
+        NSImageSymbolConfiguration *pointConfig = [NSImageSymbolConfiguration configurationWithPointSize:13 weight:NSFontWeightMedium];
+        NSImageSymbolConfiguration *colorConfig = [NSImageSymbolConfiguration configurationWithHierarchicalColor:tintColor];
+        NSImageSymbolConfiguration *config = [pointConfig configurationByApplyingConfiguration:colorConfig];
+
+        NSImage *configured = [baseSym imageWithSymbolConfiguration:config];
+        if (!configured) configured = baseSym;
+
+        NSSize symSize = configured.size;
+        CGFloat scale = MIN(dstRect.size.width / symSize.width, dstRect.size.height / symSize.height) * 0.88;
+        CGFloat tw = symSize.width * scale;
+        CGFloat th = symSize.height * scale;
+        NSRect targetRect = NSMakeRect(dstRect.origin.x + (dstRect.size.width - tw) / 2.0,
+                                       dstRect.origin.y + (dstRect.size.height - th) / 2.0,
+                                       tw, th);
+        [configured drawInRect:targetRect];
+        return YES;
+    }];
+    image.template = YES;
+    return image;
+}
+
 - (NSImage *)cachedIconForExtension:(NSString *)ext creatorType:(NSString *)creatorType {
     if (!sIconCache) {
         sIconCache = [NSMutableDictionary dictionary];
@@ -236,7 +269,7 @@ static NSMutableDictionary<NSString *, NSImage *> *sIconCache = nil;
         else if ([creatorType isEqualToString:@"pptx"] || [creatorType isEqualToString:@"key"]) symbol = @"play.rectangle.on.rectangle";
 
         if (symbol) {
-            icon = [NSImage imageWithSystemSymbolName:symbol accessibilityDescription:ext];
+            icon = [self templateIconForSymbol:symbol];
         }
     }
 
@@ -245,12 +278,13 @@ static NSMutableDictionary<NSString *, NSImage *> *sIconCache = nil;
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
         icon = [[NSWorkspace sharedWorkspace] iconForFileType:ext ?: @"txt"];
 #pragma clang diagnostic pop
+        if (icon) {
+            icon = [icon copy];
+            icon.size = NSMakeSize(16, 16);
+        }
     }
 
     if (icon) {
-        icon = [icon copy];
-        icon.size = NSMakeSize(16, 16);
-        icon.template = YES;
         sIconCache[cacheKey] = icon;
     }
     return icon;
@@ -258,6 +292,7 @@ static NSMutableDictionary<NSString *, NSImage *> *sIconCache = nil;
 
 - (NSMenu *)menuForMenuKind:(FIMenuKind)whichMenu {
     NSMenu *menu = [[NSMenu alloc] initWithTitle:@""];
+    menu.autoenablesItems = NO;
     NSDictionary *settings = [self loadCurrentSettings];
 
     BOOL includeCopyPath = YES;
@@ -309,11 +344,10 @@ static NSMutableDictionary<NSString *, NSImage *> *sIconCache = nil;
             NSMenuItem *quickEditItem = [[NSMenuItem alloc] initWithTitle:NSLocalizedString(@"Quick Edit File", nil)
                                                                    action:@selector(quickEditSelectedFile:)
                                                             keyEquivalent:@""];
+            quickEditItem.target = self;
+            quickEditItem.enabled = YES;
             if (@available(macOS 11.0, *)) {
-                NSImage *eyeImg = [NSImage imageWithSystemSymbolName:@"eye" accessibilityDescription:@"Quick Edit"];
-                eyeImg.size = NSMakeSize(16, 16);
-                eyeImg.template = YES;
-                quickEditItem.image = eyeImg;
+                quickEditItem.image = [self templateIconForSymbol:@"eye"];
             }
             [menu addItem:quickEditItem];
             [menu addItem:[NSMenuItem separatorItem]];
@@ -322,14 +356,14 @@ static NSMutableDictionary<NSString *, NSImage *> *sIconCache = nil;
 
     // 2. "New File" Menu (placed prominently)
     NSMenuItem *mainItem = [[NSMenuItem alloc] initWithTitle:NSLocalizedString(@"New File", nil) action:nil keyEquivalent:@""];
+    mainItem.target = self;
+    mainItem.enabled = YES;
     if (@available(macOS 11.0, *)) {
-        NSImage *addImg = [NSImage imageWithSystemSymbolName:@"plus.circle" accessibilityDescription:@"New File"];
-        addImg.size = NSMakeSize(16, 16);
-        addImg.template = YES;
-        mainItem.image = addImg;
+        mainItem.image = [self templateIconForSymbol:@"plus.circle"];
     }
 
     NSMenu *submenu = [[NSMenu alloc] initWithTitle:@""];
+    submenu.autoenablesItems = NO;
 
     if (enabledItems.count == 0) {
         NSMenuItem *emptyItem = [[NSMenuItem alloc] initWithTitle:NSLocalizedString(@"No file types enabled (Open Settings)", nil) action:nil keyEquivalent:@""];
@@ -349,12 +383,15 @@ static NSMutableDictionary<NSString *, NSImage *> *sIconCache = nil;
         NSArray *sortedCategories = [categorized.allKeys sortedArrayUsingSelector:@selector(compare:)];
         for (NSString *cat in sortedCategories) {
             NSMenu *catSubmenu = [[NSMenu alloc] initWithTitle:@""];
+            catSubmenu.autoenablesItems = NO;
             for (NSDictionary *item in categorized[cat]) {
                 NSMenuItem *subItem = [self menuItemForFileItem:item];
                 [catSubmenu addItem:subItem];
             }
 
             NSMenuItem *catMenuItem = [[NSMenuItem alloc] initWithTitle:cat action:nil keyEquivalent:@""];
+            catMenuItem.target = self;
+            catMenuItem.enabled = YES;
             catMenuItem.submenu = catSubmenu;
             [submenu addItem:catMenuItem];
         }
@@ -380,11 +417,10 @@ static NSMutableDictionary<NSString *, NSImage *> *sIconCache = nil;
         NSMenuItem *openTerminalItem = [[NSMenuItem alloc] initWithTitle:termTitle
                                                                   action:@selector(openTerminalAtPath:)
                                                            keyEquivalent:@""];
+        openTerminalItem.target = self;
+        openTerminalItem.enabled = YES;
         if (@available(macOS 11.0, *)) {
-            NSImage *termImg = [NSImage imageWithSystemSymbolName:@"terminal" accessibilityDescription:@"Terminal"];
-            termImg.size = NSMakeSize(16, 16);
-            termImg.template = YES;
-            openTerminalItem.image = termImg;
+            openTerminalItem.image = [self templateIconForSymbol:@"terminal"];
         }
         [menu addItem:openTerminalItem];
     }
@@ -394,11 +430,10 @@ static NSMutableDictionary<NSString *, NSImage *> *sIconCache = nil;
         NSMenuItem *copyPathItem = [[NSMenuItem alloc] initWithTitle:NSLocalizedString(@"Copy Path", nil)
                                                               action:@selector(copyPathToClipboard:)
                                                        keyEquivalent:@""];
+        copyPathItem.target = self;
+        copyPathItem.enabled = YES;
         if (@available(macOS 11.0, *)) {
-            NSImage *copyImg = [NSImage imageWithSystemSymbolName:@"doc.on.clipboard" accessibilityDescription:@"Copy Path"];
-            copyImg.size = NSMakeSize(16, 16);
-            copyImg.template = YES;
-            copyPathItem.image = copyImg;
+            copyPathItem.image = [self templateIconForSymbol:@"doc.on.clipboard"];
         }
         [menu addItem:copyPathItem];
     }
@@ -409,6 +444,8 @@ static NSMutableDictionary<NSString *, NSImage *> *sIconCache = nil;
 - (NSMenuItem *)menuItemForFileItem:(NSDictionary *)item {
     NSString *name = item[@"name"] ?: [NSString stringWithFormat:@".%@ File", item[@"ext"]];
     NSMenuItem *menuItem = [[NSMenuItem alloc] initWithTitle:name action:@selector(handleCreateFileItem:) keyEquivalent:@""];
+    menuItem.target = self;
+    menuItem.enabled = YES;
     menuItem.representedObject = item;
 
     NSString *ext = [item[@"ext"] lowercaseString] ?: @"txt";
@@ -419,6 +456,10 @@ static NSMutableDictionary<NSString *, NSImage *> *sIconCache = nil;
     }
 
     return menuItem;
+}
+
+- (BOOL)validateMenuItem:(NSMenuItem *)menuItem {
+    return YES;
 }
 
 #pragma mark - Actions

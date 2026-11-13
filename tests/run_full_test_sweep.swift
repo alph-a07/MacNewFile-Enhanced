@@ -226,6 +226,57 @@ for ext in ["py", "js", "ts", "html", "css", "json", "yaml", "sh", "swift", "doc
 let elapsedMs = (CFAbsoluteTimeGetCurrent() - start) * 1000
 assertTest(elapsedMs < 50.0, "All 12 icons resolved in \(String(format: "%.2f", elapsedMs)) ms (< 50ms)")
 
+// TEST SUITE 10: Icon Tint & Template Rendering Quality
+print("\n--- Test Suite 10: Icon Tint & Template Rendering ---")
+func makeTestTemplate(symbolName: String) -> NSImage {
+    return NSImage(size: NSSize(width: 16, height: 16), flipped: false) { dstRect in
+        let app = NSAppearance.currentDrawing()
+        let isDark = app.name.rawValue.lowercased().contains("dark")
+        let tintColor: NSColor = isDark ? .white : NSColor(white: 0.12, alpha: 1.0)
+
+        guard let baseSym = NSImage(systemSymbolName: symbolName, accessibilityDescription: nil) else { return false }
+        let pointConfig = NSImage.SymbolConfiguration(pointSize: 13, weight: .medium)
+        let colorConfig = NSImage.SymbolConfiguration(hierarchicalColor: tintColor)
+        let config = pointConfig.applying(colorConfig)
+        let configured = baseSym.withSymbolConfiguration(config) ?? baseSym
+
+        let symSize = configured.size
+        let scale = min(dstRect.size.width / symSize.width, dstRect.size.height / symSize.height) * 0.88
+        let tw = symSize.width * scale
+        let th = symSize.height * scale
+        let targetRect = NSRect(x: (dstRect.size.width - tw) / 2.0, y: (dstRect.size.height - th) / 2.0, width: tw, height: th)
+        configured.draw(in: targetRect)
+        return true
+    }
+}
+
+let testIcons = ["curlybraces", "terminal", "plus.circle", "doc.on.clipboard", "swift"]
+for symName in testIcons {
+    let icon = makeTestTemplate(symbolName: symName)
+    icon.isTemplate = true
+    assertTest(icon.isTemplate, "Icon \(symName) is marked as template")
+
+    // Verify under dark appearance that pixels are crisp white (not black/dark grey)
+    let dark = NSAppearance(named: .darkAqua)!
+    var hasWhitePixel = false
+    dark.performAsCurrentDrawingAppearance {
+        if let tiff = icon.tiffRepresentation, let rep = NSBitmapImageRep(data: tiff) {
+            for y in 0..<rep.pixelsHigh {
+                for x in 0..<rep.pixelsWide {
+                    if let c = rep.colorAt(x: x, y: y), c.alphaComponent > 0.5 {
+                        if c.redComponent > 0.8 && c.greenComponent > 0.8 && c.blueComponent > 0.8 {
+                            hasWhitePixel = true
+                            break
+                        }
+                    }
+                }
+                if hasWhitePixel { break }
+            }
+        }
+    }
+    assertTest(hasWhitePixel, "Icon \(symName) renders with bright white pixels in Dark Mode (no dark muddy wash)")
+}
+
 print("\n==========================================")
 print("TEST SUMMARY: \(testsPassed) PASSED, \(testsFailed) FAILED")
 print("==========================================")
