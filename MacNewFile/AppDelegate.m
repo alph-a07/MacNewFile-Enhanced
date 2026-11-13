@@ -16,11 +16,39 @@
 @implementation AppDelegate
 
 - (void)applicationDidFinishLaunching:(NSNotification *)aNotification {
-    // Enable the Finder extension
+    NSLog(@"[MacNewFile] applicationDidFinishLaunching started");
+
+    // Enable the Finder extension asynchronously so it never blocks the main UI thread
     [self setExtensionEnabled:YES];
 
+    // Create menu bar icon first so it appears immediately
+    self.statusItem = [[NSStatusBar systemStatusBar] statusItemWithLength:NSVariableStatusItemLength];
+
+    NSImage *icon = [NSImage imageNamed:@"add"];
+    if (!icon) {
+        if (@available(macOS 11.0, *)) {
+            icon = [NSImage imageWithSystemSymbolName:@"plus" accessibilityDescription:@"MacNewFile"];
+        }
+    }
+
+    if (icon) {
+        icon.size = NSMakeSize(18, 18);
+        icon.template = YES;
+        self.statusItem.button.image = icon;
+    } else {
+        self.statusItem.button.title = NSLocalizedString(@"NF", nil);
+    }
+
+    [self updateStatusMenu];
+    NSLog(@"[MacNewFile] Status item created successfully");
+
     // Initialize global hotkey and event monitoring
-    [[GlobalHotkeyManager sharedManager] startMonitoring];
+    @try {
+        [[GlobalHotkeyManager sharedManager] startMonitoring];
+        NSLog(@"[MacNewFile] Global hotkey monitoring started");
+    } @catch (NSException *e) {
+        NSLog(@"[MacNewFile] Error starting hotkey monitoring: %@", e);
+    }
 
     // Register URL scheme handler for macnewfile://
     [[NSAppleEventManager sharedAppleEventManager] setEventHandler:self
@@ -28,30 +56,18 @@
                                                      forEventClass:kInternetEventClass
                                                         andEventID:kAEGetURL];
 
-    // Create menu bar icon
-    self.statusItem = [[NSStatusBar systemStatusBar] statusItemWithLength:NSSquareStatusItemLength];
-
-    NSImage *icon = [NSImage imageNamed:@"add"];
-    if (icon) {
-        icon.size = NSMakeSize(18, 18);
-        icon.template = YES;
-        self.statusItem.button.image = icon;
-    } else {
-        self.statusItem.button.title = NSLocalizedString(@"NF", nil);  // Fallback to text
-    }
-
-    [self updateStatusMenu];
-
     // Register application in Login Items as a background app
     if (@available(macOS 13.0, *)) {
-        SMAppService *service = [SMAppService mainAppService];
-        if (service.status != SMAppServiceStatusEnabled) {
-            NSError *error = nil;
-            [service registerAndReturnError:&error];
-            if (error) {
-                NSLog(@"Failed to add to login items: %@", error);
+        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0), ^{
+            SMAppService *service = [SMAppService mainAppService];
+            if (service.status != SMAppServiceStatusEnabled) {
+                NSError *error = nil;
+                [service registerAndReturnError:&error];
+                if (error) {
+                    NSLog(@"[MacNewFile] Notice: Login item register: %@", error.localizedDescription);
+                }
             }
-        }
+        });
     }
 }
 
@@ -153,16 +169,23 @@
 }
 
 - (void)setExtensionEnabled:(BOOL)enabled {
-    NSTask *task = [[NSTask alloc] init];
-    task.launchPath = @"/usr/bin/pluginkit";
-    task.arguments = @[
-        @"-e",
-        enabled ? @"use" : @"ignore",
-        @"-i",
-        @"com.louieyin.MacNewFile.MacNewFileFinderExtension"
-    ];
-    [task launch];
-    [task waitUntilExit];
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        @try {
+            NSTask *task = [[NSTask alloc] init];
+            task.launchPath = @"/usr/bin/pluginkit";
+            task.arguments = @[
+                @"-e",
+                enabled ? @"use" : @"ignore",
+                @"-i",
+                @"com.louieyin.MacNewFile.MacNewFileFinderExtension"
+            ];
+            [task launch];
+            [task waitUntilExit];
+            NSLog(@"[MacNewFile] pluginkit setExtensionEnabled:%@ finished with code %d", enabled ? @"YES" : @"NO", task.terminationStatus);
+        } @catch (NSException *e) {
+            NSLog(@"[MacNewFile] pluginkit error: %@", e);
+        }
+    });
 }
 
 - (BOOL)applicationSupportsSecureRestorableState:(NSApplication *)app {
