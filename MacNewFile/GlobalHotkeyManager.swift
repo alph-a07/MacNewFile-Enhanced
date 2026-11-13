@@ -8,6 +8,7 @@ public class GlobalHotkeyManager: NSObject {
 
     private var hotKeyRef: EventHotKeyRef?
     private var eventHandler: EventHandlerRef?
+    private var globalMonitor: Any?
 
     private override init() {
         super.init()
@@ -24,6 +25,26 @@ public class GlobalHotkeyManager: NSObject {
             object: nil,
             suspensionBehavior: .deliverImmediately
         )
+
+        // Secondary fallback monitor for keydown events
+        globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            self?.checkKeyEvent(event)
+        }
+    }
+
+    private func checkKeyEvent(_ event: NSEvent) {
+        let shortcut = SettingsManager.shared.settings.quickEditorShortcut
+        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+
+        if shortcut == "Option+Space" && flags == .option && event.keyCode == 49 {
+            DispatchQueue.main.async { [weak self] in
+                self?.handleHotKeyTriggered()
+            }
+        } else if shortcut == "Cmd+Shift+E" && flags == [.command, .shift] && event.keyCode == 14 {
+            DispatchQueue.main.async { [weak self] in
+                self?.handleHotKeyTriggered()
+            }
+        }
     }
 
     @objc public func registerCurrentShortcut() {
@@ -56,16 +77,19 @@ public class GlobalHotkeyManager: NSObject {
 
         var eventType = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
 
-        InstallEventHandler(GetApplicationEventTarget(), { (nextHandler, event, userData) -> OSStatus in
+        // In Cocoa, GetEventDispatcherTarget() receives carbon hotkeys reliably
+        let target = GetEventDispatcherTarget()
+
+        InstallEventHandler(target, { (nextHandler, event, userData) -> OSStatus in
             DispatchQueue.main.async {
                 GlobalHotkeyManager.shared.handleHotKeyTriggered()
             }
             return noErr
         }, 1, &eventType, nil, &eventHandler)
 
-        let status = RegisterEventHotKey(keyCode, modifiers, hotKeyID, GetApplicationEventTarget(), 0, &hotKeyRef)
+        let status = RegisterEventHotKey(keyCode, modifiers, hotKeyID, target, 0, &hotKeyRef)
         if status != noErr {
-            NSLog("[MacNewFile] Failed to register global hotkey: %d", status)
+            NSLog("[MacNewFile] Notice: Carbon RegisterEventHotKey status %d for %@", status, shortcut)
         } else {
             NSLog("[MacNewFile] Successfully registered global hotkey: %@", shortcut)
         }
@@ -87,8 +111,8 @@ public class GlobalHotkeyManager: NSObject {
         if let selectedPath = getFinderSelectedFilePath() {
             QuickEditorWindowController.shared.openFile(atPath: selectedPath)
         } else {
-            // Beep or show hint
-            NSSound.beep()
+            // Open editor with new draft buffer if no specific file selected
+            QuickEditorWindowController.shared.openNewDraft()
         }
     }
 

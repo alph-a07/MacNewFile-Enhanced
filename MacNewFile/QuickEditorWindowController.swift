@@ -201,6 +201,26 @@ public class QuickEditorWindowController: NSWindowController, NSTextViewDelegate
     }
 
     // MARK: - Open & Load File
+    @objc public func openNewDraft() {
+        self.currentFileURL = nil
+        applySettingsAppearance()
+
+        textView.string = ""
+        isModified = false
+
+        titleLabel.stringValue = "Untitled"
+        pathLabel.stringValue = "New Scratch Buffer (⌘S to Save)"
+        window?.title = "Untitled — MacNewFile Quick Editor"
+        iconImageView.image = NSImage(systemSymbolName: "doc.text", accessibilityDescription: "File")
+
+        updateStatusUI()
+
+        showWindow(nil)
+        window?.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        textView.window?.makeFirstResponder(textView)
+    }
+
     @objc public func openFile(atPath path: String) {
         let url = URL(fileURLWithPath: path)
         openFile(at: url)
@@ -248,7 +268,21 @@ public class QuickEditorWindowController: NSWindowController, NSTextViewDelegate
 
     // MARK: - Actions
     @objc public func saveFile() {
-        guard let url = currentFileURL else { return }
+        guard let url = currentFileURL else {
+            // No file URL, show Save Panel
+            let savePanel = NSSavePanel()
+            savePanel.title = "Save New File"
+            savePanel.nameFieldStringValue = "Untitled.txt"
+            NSApp.activate(ignoringOtherApps: true)
+            if savePanel.runModal() == .OK, let targetURL = savePanel.url {
+                self.currentFileURL = targetURL
+                titleLabel.stringValue = targetURL.lastPathComponent
+                pathLabel.stringValue = targetURL.deletingLastPathComponent().path
+                window?.title = "\(targetURL.lastPathComponent) — MacNewFile Quick Editor"
+                saveFile()
+            }
+            return
+        }
 
         do {
             let content = textView.string

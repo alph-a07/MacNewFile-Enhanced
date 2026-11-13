@@ -29,14 +29,12 @@ mkdir -p "${EXT_MACOS}" "${EXT_RESOURCES}"
 TMP_EXTRACT=$(mktemp -d)
 if [ -f "${ROOT_DIR}/dist/MacNewFile.zip" ]; then
     echo "Extracting base assets & storyboard..."
-    unzip -q "${ROOT_DIR}/dist/MacNewFile.zip" -d "${TMP_EXTRACT}"
+    unzip -q "${ROOT_DIR}/dist/MacNewFile.zip" -d "${TMP_EXTRACT}" || true
     
-    # Copy Assets.car and Storyboard to App
     if [ -d "${TMP_EXTRACT}/MacNewFile.app/Contents/Resources" ]; then
         cp -R "${TMP_EXTRACT}/MacNewFile.app/Contents/Resources/"* "${APP_RESOURCES}/" || true
     fi
     
-    # Copy Assets.car to Extension
     if [ -d "${TMP_EXTRACT}/MacNewFile.app/Contents/PlugIns/MacNewFileFinderExtension.appex/Contents/Resources" ]; then
         cp -R "${TMP_EXTRACT}/MacNewFile.app/Contents/PlugIns/MacNewFileFinderExtension.appex/Contents/Resources/"* "${EXT_RESOURCES}/" || true
     fi
@@ -59,10 +57,11 @@ cp -R "${ROOT_DIR}/MacNewFile/it.lproj" "${APP_RESOURCES}/"
 cp "${ROOT_DIR}/MacNewFileFinderExtension/Info.plist" "${EXT_CONTENTS}/Info.plist"
 cp "${ROOT_DIR}/MacNewFile/Info.plist" "${APP_CONTENTS}/Info.plist"
 
-# 4. Build FinderSync Extension
-echo "Compiling FinderSync extension..."
-clang -fobjc-arc -bundle -mmacosx-version-min=13.0 -isysroot "${SDK}" \
+# 4. Build FinderSync Extension as a Sandboxed MH_EXECUTE Mach-O Binary
+echo "Compiling FinderSync extension executable..."
+clang -fobjc-arc -mmacosx-version-min=13.0 -isysroot "${SDK}" \
     -framework Cocoa -framework FinderSync \
+    -e _NSExtensionMain \
     "${ROOT_DIR}/MacNewFileFinderExtension/FinderSync.m" \
     -o "${EXT_MACOS}/MacNewFileFinderExtension"
 
@@ -97,16 +96,28 @@ clang -fobjc-arc -mmacosx-version-min=13.0 -isysroot "${SDK}" \
 
 rm -rf "${SWIFT_TMP_DIR}"
 
-# 7. Code Signing (Ad-hoc)
-echo "Code signing extension and main application..."
+# 7. Code Signing with Sandboxed Entitlements
+echo "Code signing extension binary and bundle..."
+codesign --force --sign - --entitlements "${ROOT_DIR}/MacNewFileFinderExtension/MacNewFileFinderExtension.entitlements" "${EXT_MACOS}/MacNewFileFinderExtension"
 codesign --force --sign - --entitlements "${ROOT_DIR}/MacNewFileFinderExtension/MacNewFileFinderExtension.entitlements" "${EXT_DIR}"
+echo "Code signing main application..."
 codesign --force --sign - --entitlements "${ROOT_DIR}/MacNewFile/MacNewFile.entitlements" "${APP_DIR}"
 
-# 8. Create distribution zip
+# 8. Install to /Applications for system FinderSync discovery
+echo "Installing to /Applications/MacNewFile.app..."
+rm -rf /Applications/MacNewFile.app
+cp -R "${APP_DIR}" /Applications/
+
+# 9. Register with LaunchServices & pluginkit
+echo "Registering with LaunchServices and pluginkit..."
+/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f /Applications/MacNewFile.app || true
+pluginkit -a /Applications/MacNewFile.app/Contents/PlugIns/MacNewFileFinderExtension.appex || true
+pluginkit -e use -i com.louieyin.MacNewFile.MacNewFileFinderExtension || true
+
+# 10. Create distribution zip
 echo "Packaging dist/MacNewFile.zip..."
 mkdir -p "${ROOT_DIR}/dist"
 (cd "${BUILD_DIR}" && zip -rq "${ROOT_DIR}/dist/MacNewFile.zip" "MacNewFile.app")
 
-echo "=== Build Complete! ==="
-echo "Application built at: ${APP_DIR}"
-echo "Distribution package: ${ROOT_DIR}/dist/MacNewFile.zip"
+echo "=== Build & Installation Complete! ==="
+echo "Application installed at: /Applications/MacNewFile.app"

@@ -28,6 +28,8 @@
 	<string>NSApplication</string>
 	<key>NSMainStoryboardFile</key>
 	<string>Main</string>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>MacNewFile needs access to Finder to get selected files for Quick Edit.</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
