@@ -9,8 +9,8 @@ public class SettingsWindowController: NSWindowController {
     private init() {
         let hostingView = NSHostingView(rootView: SettingsView())
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 680, height: 520),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            contentRect: NSRect(x: 0, y: 0, width: 700, height: 530),
+            styleMask: [.titled, .closable, .miniaturizable],
             backing: .buffered,
             defer: false
         )
@@ -29,8 +29,8 @@ public class SettingsWindowController: NSWindowController {
         if window == nil {
             let hostingView = NSHostingView(rootView: SettingsView())
             let newWindow = NSWindow(
-                contentRect: NSRect(x: 0, y: 0, width: 680, height: 520),
-                styleMask: [.titled, .closable, .miniaturizable, .resizable],
+                contentRect: NSRect(x: 0, y: 0, width: 700, height: 530),
+                styleMask: [.titled, .closable, .miniaturizable],
                 backing: .buffered,
                 defer: false
             )

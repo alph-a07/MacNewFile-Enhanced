@@ -167,6 +167,11 @@
     NSURL *url = [NSURL URLWithString:urlString];
     if (!url) return;
 
+    if ([url.host isEqualToString:@"settings"] || [url.path isEqualToString:@"/settings"]) {
+        [self openSettings:nil];
+        return;
+    }
+
     // Handles macnewfile://open?path=/path/to/file or macnewfile://edit?path=/path/to/file
     NSURLComponents *components = [NSURLComponents componentsWithURL:url resolvingAgainstBaseURL:NO];
     for (NSURLQueryItem *item in components.queryItems) {
