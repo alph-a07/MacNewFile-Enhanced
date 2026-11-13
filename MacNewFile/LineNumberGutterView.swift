@@ -1,14 +1,14 @@
 import Cocoa
 
 public class LineNumberGutterView: NSRulerView {
-    private var lineNumberAttributes: [NSAttributedString.Key: Any] = [:]
-    private var currentLineAttributes: [NSAttributedString.Key: Any] = [:]
+    public override var isFlipped: Bool {
+        return true
+    }
 
     public init(textView: NSTextView) {
         super.init(scrollView: textView.enclosingScrollView, orientation: .verticalRuler)
         self.clientView = textView
         self.ruleThickness = 44.0
-        updateAttributes()
     }
 
     required init(coder: NSCoder) {
@@ -16,16 +16,7 @@ public class LineNumberGutterView: NSRulerView {
     }
 
     public func updateAttributes() {
-        let font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
-        let color = NSColor.secondaryLabelColor
-        lineNumberAttributes = [
-            .font: font,
-            .foregroundColor: color
-        ]
-        currentLineAttributes = [
-            .font: NSFont.monospacedSystemFont(ofSize: 11, weight: .medium),
-            .foregroundColor: NSColor.labelColor
-        ]
+        needsDisplay = true
     }
 
     public override func drawHashMarksAndLabels(in rect: NSRect) {
@@ -35,11 +26,26 @@ public class LineNumberGutterView: NSRulerView {
             return
         }
 
+        // Subtle 1px right border for gutter
+        let separatorRect = NSRect(x: ruleThickness - 1, y: 0, width: 1, height: bounds.height)
+        NSColor.separatorColor.withAlphaComponent(0.25).setFill()
+        separatorRect.fill()
+
         let content = textView.string as NSString
+        guard content.length > 0 else {
+            let attrs: [NSAttributedString.Key: Any] = [
+                .font: NSFont.monospacedSystemFont(ofSize: 11, weight: .regular),
+                .foregroundColor: NSColor.secondaryLabelColor.withAlphaComponent(0.6)
+            ]
+            let str = NSAttributedString(string: "1", attributes: attrs)
+            str.draw(at: NSPoint(x: ruleThickness - str.size().width - 8, y: textView.textContainerInset.height))
+            return
+        }
+
         let visibleGlyphRange = layoutManager.glyphRange(forBoundingRect: textView.visibleRect, in: textContainer)
         let visibleCharRange = layoutManager.characterRange(forGlyphRange: visibleGlyphRange, actualGlyphRange: nil)
 
-        // Calculate line number for visible range
+        // Find starting line number
         var lineNumber = 1
         content.enumerateSubstrings(in: NSRange(location: 0, length: content.length), options: [.byLines, .substringNotRequired]) { _, substringRange, _, stop in
             if substringRange.location >= visibleCharRange.location {
@@ -49,14 +55,11 @@ public class LineNumberGutterView: NSRulerView {
             }
         }
 
-        // Draw background for ruler
-        NSColor.windowBackgroundColor.setFill()
-        rect.fill()
-
-        // Draw line separator
-        let separatorRect = NSRect(x: self.ruleThickness - 1, y: rect.minY, width: 1, height: rect.height)
-        NSColor.separatorColor.setFill()
-        separatorRect.fill()
+        let font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
+        let attrs: [NSAttributedString.Key: Any] = [
+            .font: font,
+            .foregroundColor: NSColor.secondaryLabelColor.withAlphaComponent(0.7)
+        ]
 
         var glyphIndex = visibleGlyphRange.location
         while glyphIndex < NSMaxRange(visibleGlyphRange) {
@@ -67,9 +70,9 @@ public class LineNumberGutterView: NSRulerView {
             let yPos = lineRect.minY + textView.textContainerInset.height - textView.visibleRect.minY
 
             let numString = "\(lineNumber)"
-            let str = NSAttributedString(string: numString, attributes: lineNumberAttributes)
+            let str = NSAttributedString(string: numString, attributes: attrs)
             let strSize = str.size()
-            let drawPoint = NSPoint(x: self.ruleThickness - 8 - strSize.width, y: yPos + (lineRect.height - strSize.height) / 2)
+            let drawPoint = NSPoint(x: ruleThickness - strSize.width - 8, y: yPos + (lineRect.height - strSize.height) / 2)
             str.draw(at: drawPoint)
 
             glyphIndex = NSMaxRange(layoutManager.glyphRange(forCharacterRange: lineRange, actualCharacterRange: nil))

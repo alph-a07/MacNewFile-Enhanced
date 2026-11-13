@@ -37,6 +37,8 @@ public class QuickEditorWindowController: NSWindowController, NSTextViewDelegate
         )
         panel.isFloatingPanel = true
         panel.level = .floating
+        panel.hidesOnDeactivate = false
+        panel.becomesKeyOnlyIfNeeded = false
         panel.titlebarAppearsTransparent = true
         panel.titleVisibility = .hidden
         panel.isMovableByWindowBackground = true
