@@ -195,20 +195,54 @@
     NSString *content = userInfo[@"content"] ?: @"";
     NSString *templatePath = userInfo[@"templatePath"];
 
-    if (!filePath) return;
+    if (!filePath || filePath.length == 0) return;
 
     NSFileManager *fm = [NSFileManager defaultManager];
     NSError *error = nil;
 
-    if (templatePath.length > 0 && [fm fileExistsAtPath:templatePath]) {
-        [fm copyItemAtPath:templatePath toPath:filePath error:&error];
+    // Check collision in main app
+    NSString *dir = [filePath stringByDeletingLastPathComponent];
+    NSString *ext = [filePath pathExtension];
+    NSString *base = [[filePath lastPathComponent] stringByDeletingPathExtension];
+    NSString *finalPath = filePath;
+    int counter = 1;
+    while ([fm fileExistsAtPath:finalPath]) {
+        finalPath = [dir stringByAppendingPathComponent:[NSString stringWithFormat:@"%@ (%d).%@", base, counter, ext]];
+        counter++;
+    }
+
+    if (templatePath.length > 0) {
+        NSString *resolvedTemplate = templatePath;
+        if (![fm fileExistsAtPath:resolvedTemplate]) {
+            NSString *resourceName = [templatePath stringByDeletingPathExtension];
+            NSString *resourceExt = [templatePath pathExtension];
+            NSString *bundleRes = [[NSBundle mainBundle] pathForResource:resourceName ofType:resourceExt];
+            if (bundleRes) {
+                resolvedTemplate = bundleRes;
+            } else {
+                // Check in PlugIns/MacNewFileFinderExtension.appex/Contents/Resources
+                NSString *plugInPath = [[[NSBundle mainBundle] builtInPlugInsPath] stringByAppendingPathComponent:@"MacNewFileFinderExtension.appex"];
+                NSBundle *extBundle = [NSBundle bundleWithPath:plugInPath];
+                NSString *extRes = [extBundle pathForResource:resourceName ofType:resourceExt];
+                if (extRes) {
+                    resolvedTemplate = extRes;
+                }
+            }
+        }
+
+        if ([fm fileExistsAtPath:resolvedTemplate]) {
+            [fm copyItemAtPath:resolvedTemplate toPath:finalPath error:&error];
+        } else {
+            NSData *data = [content dataUsingEncoding:NSUTF8StringEncoding] ?: [NSData data];
+            [data writeToFile:finalPath options:NSDataWritingAtomic error:&error];
+        }
     } else {
         NSData *data = [content dataUsingEncoding:NSUTF8StringEncoding] ?: [NSData data];
-        [data writeToFile:filePath options:NSDataWritingAtomic error:&error];
+        [data writeToFile:finalPath options:NSDataWritingAtomic error:&error];
     }
 
     if (!error) {
-        NSURL *fileURL = [NSURL fileURLWithPath:filePath];
+        NSURL *fileURL = [NSURL fileURLWithPath:finalPath];
         [[NSWorkspace sharedWorkspace] activateFileViewerSelectingURLs:@[fileURL]];
     } else {
         NSLog(@"[MacNewFile] Main app createFile error: %@", error);

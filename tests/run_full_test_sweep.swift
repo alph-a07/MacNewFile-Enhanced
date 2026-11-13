@@ -277,6 +277,147 @@ for symName in testIcons {
     assertTest(hasWhitePixel, "Icon \(symName) renders with bright white pixels in Dark Mode (no dark muddy wash)")
 }
 
+// TEST SUITE 11: All File Types Quick Editor Loading & Eligibility
+print("\n--- Test Suite 11: All File Types Quick Editor Eligibility & Loading ---")
+let sweepTestDir = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("QuickEditor_Sweep_\(UUID().uuidString)")
+try? FileManager.default.createDirectory(at: sweepTestDir, withIntermediateDirectories: true)
+
+let allFileTypesToTest: [(name: String, content: String)] = [
+    // Code & Web
+    ("test.py", "print('hello')\n"),
+    ("test.js", "console.log('hello');\n"),
+    ("test.ts", "const x: number = 42;\n"),
+    ("test.tsx", "export const App = () => <div>Hello</div>;\n"),
+    ("test.jsx", "export const App = () => <div>Hello</div>;\n"),
+    ("test.html", "<!DOCTYPE html><html><body>Test</body></html>\n"),
+    ("test.css", "body { background: #000; }\n"),
+    ("test.json", "{\"status\": \"ok\"}\n"),
+    ("test.yaml", "key: value\n"),
+    ("test.sh", "#!/bin/bash\necho hello\n"),
+    ("test.zsh", "#!/bin/zsh\necho hello\n"),
+    ("test.swift", "import Foundation\nprint(42)\n"),
+    ("test.c", "#include <stdio.h>\n"),
+    ("test.cpp", "#include <iostream>\n"),
+    ("test.h", "#pragma once\n"),
+    ("test.rs", "fn main() {}\n"),
+    ("test.go", "package main\n"),
+    ("test.sql", "SELECT * FROM users;\n"),
+    ("test.xml", "<root></root>\n"),
+    
+    // Documents & Notes
+    ("test.txt", "Plain text content\nLine 2\n"),
+    ("test.md", "# Heading\nMarkdown text\n"),
+    ("test.rtf", "{\\rtf1\\ansi Hello RTF World}"),
+    ("test.log", "2026-11-14 INFO Service started\n"),
+    ("test.csv", "name,age\nAlice,30\n"),
+    ("test.tsv", "name\tage\nBob\t25\n"),
+    ("test.ini", "[section]\nkey=val\n"),
+    ("test.toml", "[section]\nkey = \"val\"\n"),
+    ("test.conf", "listen 8080;\n"),
+    
+    // Dotfiles & Extensionless
+    (".env", "PORT=3000\nNODE_ENV=test\n"),
+    (".gitignore", "node_modules/\n.DS_Store\n"),
+    (".zshrc", "export PATH=$PATH:/usr/local/bin\n"),
+    ("LICENSE", "MIT License Copyright (c) 2026\n"),
+    ("Makefile", "all:\n\t@echo done\n"),
+    ("Dockerfile", "FROM alpine:latest\n")
+]
+
+func checkEligibility(path: String) -> Bool {
+    let url = URL(fileURLWithPath: path)
+    var ext = url.pathExtension.lowercased()
+    if ext.isEmpty {
+        let name = url.lastPathComponent.lowercased()
+        if name.hasPrefix(".") {
+            let sub = String(name.dropFirst())
+            if sub == "env" || sub.hasPrefix("env.") {
+                ext = "env"
+            } else if sub.contains("zsh") || sub.contains("bash") || sub == "profile" {
+                ext = "sh"
+            } else {
+                ext = "txt"
+            }
+        } else if name == "license" || name == "readme" || name == "makefile" || name == "dockerfile" {
+            ext = "txt"
+        }
+    } else {
+        if ext == "tsx" { ext = "ts" }
+        else if ext == "jsx" { ext = "js" }
+        else if ext == "zsh" || ext == "bash" { ext = "sh" }
+        else if ext == "conf" { ext = "ini" }
+    }
+    
+    // Check against real settings fileItems
+    if let realData = try? Data(contentsOf: URL(fileURLWithPath: realSettingsFile)),
+       let realJson = try? JSONSerialization.jsonObject(with: realData) as? [String: Any],
+       let realItems = realJson["fileItems"] as? [[String: Any]] {
+        if let item = realItems.first(where: { ($0["ext"] as? String)?.lowercased() == ext }) {
+            return (item["enabledForQuickEditor"] as? Bool) ?? false
+        }
+    }
+    return false
+}
+
+for (fileName, sampleContent) in allFileTypesToTest {
+    let fileURL = sweepTestDir.appendingPathComponent(fileName)
+    try? sampleContent.write(to: fileURL, atomically: true, encoding: .utf8)
+    assertTest(FileManager.default.fileExists(atPath: fileURL.path), "Created test file on disk: \(fileName)")
+    
+    let isEligible = checkEligibility(path: fileURL.path)
+    assertTest(isEligible, "File \(fileName) is eligible for Quick Editor")
+    
+    // Verify file reading matches content
+    let readStr: String
+    if fileURL.pathExtension == "rtf" {
+        if let attr = try? NSAttributedString(url: fileURL, options: [.documentType: NSAttributedString.DocumentType.rtf], documentAttributes: nil) {
+            readStr = attr.string
+        } else {
+            readStr = (try? String(contentsOf: fileURL, encoding: .utf8)) ?? ""
+        }
+    } else {
+        readStr = (try? String(contentsOf: fileURL, encoding: .utf8)) ?? ""
+    }
+    assertTest(!readStr.isEmpty, "File \(fileName) read successfully into text buffer (\(readStr.count) chars)")
+}
+
+// TEST SUITE 12: Cross-Process Native File Creation & Collisions
+print("\n--- Test Suite 12: Cross-Process New File Creation & Collisions ---")
+let newFileTargetDir = sweepTestDir.appendingPathComponent("NewFiles")
+try? FileManager.default.createDirectory(at: newFileTargetDir, withIntermediateDirectories: true)
+
+let targetPyPath = newFileTargetDir.appendingPathComponent("Untitled.py").path
+DistributedNotificationCenter.default().postNotificationName(
+    NSNotification.Name("com.louieyin.MacNewFile.CreateFileRequest"),
+    object: nil,
+    userInfo: [
+        "filePath": targetPyPath,
+        "content": "#!/usr/bin/env python3\nprint('Native Creation Test')\n"
+    ],
+    deliverImmediately: true
+)
+
+// Wait briefly for main app to process distributed notification
+usleep(300_000)
+assertTest(FileManager.default.fileExists(atPath: targetPyPath), "Main app created Untitled.py via CreateFileRequest")
+
+// Test second creation triggers collision handling -> Untitled (1).py
+DistributedNotificationCenter.default().postNotificationName(
+    NSNotification.Name("com.louieyin.MacNewFile.CreateFileRequest"),
+    object: nil,
+    userInfo: [
+        "filePath": targetPyPath,
+        "content": "#!/usr/bin/env python3\nprint('Collision Test')\n"
+    ],
+    deliverImmediately: true
+)
+usleep(300_000)
+let collidedPyPath = newFileTargetDir.appendingPathComponent("Untitled (1).py").path
+assertTest(FileManager.default.fileExists(atPath: collidedPyPath), "Main app handled collision and created Untitled (1).py")
+
+// Clean up sweep directory
+try? FileManager.default.removeItem(at: sweepTestDir)
+
 print("\n==========================================")
 print("TEST SUMMARY: \(testsPassed) PASSED, \(testsFailed) FAILED")
 print("==========================================")

@@ -14,6 +14,56 @@ public class EditorDocument {
     }
 }
 
+public class QuickEditorPanel: NSPanel {
+    public override var canBecomeKey: Bool {
+        return true
+    }
+
+    public override var canBecomeMain: Bool {
+        return true
+    }
+
+    public override func cancelOperation(_ sender: Any?) {
+        QuickEditorWindowController.shared.closeWindow()
+    }
+
+    public override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+
+        // Cmd + S -> Save
+        if flags == .command && event.charactersIgnoringModifiers == "s" {
+            QuickEditorWindowController.shared.saveFile()
+            return true
+        }
+
+        // Cmd + W -> Close Tab or Window
+        if flags == .command && event.charactersIgnoringModifiers == "w" {
+            QuickEditorWindowController.shared.closeTabOrWindow()
+            return true
+        }
+
+        // Cmd + Return / Cmd + R -> Open with compatible app
+        if flags == .command && (event.keyCode == 36 || event.charactersIgnoringModifiers == "r") {
+            QuickEditorWindowController.shared.triggerOpenWith()
+            return true
+        }
+
+        // Escape (keyCode 53) -> Close
+        if event.keyCode == 53 {
+            QuickEditorWindowController.shared.closeWindow()
+            return true
+        }
+
+        // Option + Space -> Close
+        if flags == .option && event.keyCode == 49 {
+            QuickEditorWindowController.shared.closeWindow()
+            return true
+        }
+
+        return super.performKeyEquivalent(with: event)
+    }
+}
+
 @objc(QuickEditorWindowController)
 public class QuickEditorWindowController: NSWindowController, NSTextViewDelegate, NSWindowDelegate {
     @objc(sharedController)
@@ -51,9 +101,9 @@ public class QuickEditorWindowController: NSWindowController, NSTextViewDelegate
     private let footerHeight: CGFloat = 24.0
 
     private init() {
-        let panel = NSPanel(
+        let panel = QuickEditorPanel(
             contentRect: NSRect(x: 0, y: 0, width: 740, height: 530),
-            styleMask: [.titled, .closable, .resizable, .fullSizeContentView, .nonactivatingPanel],
+            styleMask: [.titled, .closable, .resizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
@@ -375,17 +425,30 @@ public class QuickEditorWindowController: NSWindowController, NSTextViewDelegate
         var newDocs: [EditorDocument] = []
         for url in urls {
             let content: String
-            do {
-                let data = try Data(contentsOf: url)
-                if let str = String(data: data, encoding: .utf8) {
-                    content = str
-                } else if let str = String(data: data, encoding: .isoLatin1) {
+            let ext = url.pathExtension.lowercased()
+            if ext == "rtf" {
+                if let attr = try? NSAttributedString(url: url, options: [.documentType: NSAttributedString.DocumentType.rtf], documentAttributes: nil) {
+                    content = attr.string
+                } else if let data = try? Data(contentsOf: url), let str = String(data: data, encoding: .utf8) {
                     content = str
                 } else {
-                    content = "// Binary or unsupported encoding.\n"
+                    content = ""
                 }
-            } catch {
-                content = "// Error: \(error.localizedDescription)\n"
+            } else {
+                do {
+                    let data = try Data(contentsOf: url)
+                    if let str = String(data: data, encoding: .utf8) {
+                        content = str
+                    } else if let str = String(data: data, encoding: .isoLatin1) {
+                        content = str
+                    } else if let str = String(data: data, encoding: .windowsCP1252) {
+                        content = str
+                    } else {
+                        content = "// Binary or unsupported file format.\n"
+                    }
+                } catch {
+                    content = "// Error reading file: \(error.localizedDescription)\n"
+                }
             }
             newDocs.append(EditorDocument(fileURL: url, content: content))
         }
@@ -425,44 +488,30 @@ public class QuickEditorWindowController: NSWindowController, NSTextViewDelegate
         updateStatusUI()
     }
 
+    private func isDarkModeActive() -> Bool {
+        let settings = SettingsManager.shared.settings
+        if settings.quickEditorTheme == "dark" { return true }
+        if settings.quickEditorTheme == "light" { return false }
+        if let style = UserDefaults.standard.string(forKey: "AppleInterfaceStyle") {
+            return style.caseInsensitiveCompare("Dark") == .orderedSame
+        }
+        if let app = NSApplication.shared.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) {
+            return app == .darkAqua
+        }
+        return true
+    }
+
     private func updateWindowAppearance() {
         guard let window = self.window else { return }
-        let settings = SettingsManager.shared.settings
-
-        if settings.quickEditorTheme == "dark" {
-            window.appearance = NSAppearance(named: .darkAqua)
-            backgroundVisualEffect?.material = .hudWindow
-        } else if settings.quickEditorTheme == "light" {
-            window.appearance = NSAppearance(named: .aqua)
-            backgroundVisualEffect?.material = .popover
-        } else {
-            let isDark: Bool
-            if let style = UserDefaults.standard.string(forKey: "AppleInterfaceStyle") {
-                isDark = (style == "Dark")
-            } else {
-                isDark = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-            }
-            window.appearance = isDark ? NSAppearance(named: .darkAqua) : NSAppearance(named: .aqua)
-            backgroundVisualEffect?.material = isDark ? .hudWindow : .popover
-        }
+        let isDark = isDarkModeActive()
+        window.appearance = isDark ? NSAppearance(named: .darkAqua) : NSAppearance(named: .aqua)
+        backgroundVisualEffect?.material = isDark ? .hudWindow : .popover
     }
 
     private func resolveEditorColors() -> (textColor: NSColor, bgColor: NSColor) {
-        let settings = SettingsManager.shared.settings
-        if settings.quickEditorTheme == "dark" {
-            return (NSColor(white: 0.94, alpha: 1.0), .clear)
-        } else if settings.quickEditorTheme == "light" {
-            return (NSColor(white: 0.12, alpha: 1.0), .clear)
-        } else {
-            let isDark: Bool
-            if let style = UserDefaults.standard.string(forKey: "AppleInterfaceStyle") {
-                isDark = (style == "Dark")
-            } else {
-                isDark = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-            }
-            let textCol = isDark ? NSColor(white: 0.94, alpha: 1.0) : NSColor(white: 0.12, alpha: 1.0)
-            return (textCol, .clear)
-        }
+        let isDark = isDarkModeActive()
+        let textCol = isDark ? NSColor(white: 0.94, alpha: 1.0) : NSColor(white: 0.12, alpha: 1.0)
+        return (textCol, .clear)
     }
 
     private func resolveFont() -> NSFont {
@@ -583,48 +632,69 @@ public class QuickEditorWindowController: NSWindowController, NSTextViewDelegate
         let isAlreadyVisible = window.isVisible
         showWindow(nil)
 
+        let screenFrame = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
+        let targetWidth: CGFloat = 740
+        let targetHeight: CGFloat = 530
+        let targetFrame = NSRect(
+            x: screenFrame.midX - targetWidth / 2,
+            y: screenFrame.midY - targetHeight / 2,
+            width: targetWidth,
+            height: targetHeight
+        )
+
         if !isAlreadyVisible && SettingsManager.shared.settings.enableQuickLookAnimation {
-            let screenFrame = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
-            let targetWidth: CGFloat = 740
-            let targetHeight: CGFloat = 530
-            let targetFrame = NSRect(
-                x: screenFrame.midX - targetWidth / 2,
-                y: screenFrame.midY - targetHeight / 2,
-                width: targetWidth,
-                height: targetHeight
-            )
-
-            var startFrame: NSRect
-            if let finderRect = getFinderSourceRect() {
-                let centerX = finderRect.midX
-                let centerY = finderRect.midY
-                startFrame = NSRect(x: centerX - 50, y: centerY - 40, width: 100, height: 80)
-            } else {
-                startFrame = NSRect(x: targetFrame.midX - 50, y: targetFrame.midY - 40, width: 100, height: 80)
-            }
-
+            let startFrame = targetFrame.insetBy(dx: 28, dy: 20)
             window.setFrame(startFrame, display: false)
             window.alphaValue = 0.0
             window.makeKeyAndOrderFront(nil)
+            NSApplication.shared.activate(ignoringOtherApps: true)
 
-            NSAnimationContext.runAnimationGroup { context in
-                context.duration = 0.22
+            NSAnimationContext.runAnimationGroup({ context in
+                context.duration = 0.18
                 context.timingFunction = CAMediaTimingFunction(controlPoints: 0.16, 1.0, 0.3, 1.0)
                 window.animator().setFrame(targetFrame, display: true)
                 window.animator().alphaValue = 1.0
-            }
+            }, completionHandler: { [weak self] in
+                self?.relayoutEditor()
+            })
         } else {
+            if !isAlreadyVisible {
+                window.setFrame(targetFrame, display: true)
+            }
+            window.alphaValue = 1.0
             window.makeKeyAndOrderFront(nil)
+            NSApplication.shared.activate(ignoringOtherApps: true)
+            relayoutEditor()
         }
 
         textView.window?.makeFirstResponder(textView)
         startSelectionPolling()
     }
 
+    public func relayoutEditor() {
+        guard let window = self.window, window.isVisible else { return }
+        scrollView.frame = calculateEditorRect()
+        let settings = SettingsManager.shared.settings
+        if settings.wordWrap {
+            textView.isHorizontallyResizable = false
+            textView.textContainer?.widthTracksTextView = true
+            textView.textContainer?.containerSize = NSMakeSize(scrollView.contentSize.width, CGFloat.greatestFiniteMagnitude)
+        } else {
+            textView.isHorizontallyResizable = true
+            textView.textContainer?.widthTracksTextView = false
+            textView.textContainer?.containerSize = NSMakeSize(CGFloat.greatestFiniteMagnitude, CGFloat.greatestFiniteMagnitude)
+        }
+        textView.sizeToFit()
+        textView.layoutManager?.ensureLayout(for: textView.textContainer!)
+        textView.needsLayout = true
+        textView.needsDisplay = true
+        gutterView?.needsDisplay = true
+    }
+
     // MARK: - Responsive Finder Selection Polling (Auto-Close When Incompatible or None)
     private func startSelectionPolling() {
         selectionPollingTimer?.invalidate()
-        selectionPollingTimer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in
+        selectionPollingTimer = Timer.scheduledTimer(withTimeInterval: 0.35, repeats: true) { [weak self] _ in
             self?.checkFinderSelectionChange()
         }
     }
@@ -640,20 +710,31 @@ public class QuickEditorWindowController: NSWindowController, NSTextViewDelegate
             return
         }
 
+        // Never auto-close or reload if user is editing unsaved changes
+        if documents.contains(where: { $0.isModified }) {
+            return
+        }
+
         // Only track selection when Finder is the frontmost application
         if let frontApp = NSWorkspace.shared.frontmostApplication, frontApp.bundleIdentifier == "com.apple.finder" {
-            let eligiblePaths = GlobalHotkeyManager.shared.getEligibleFinderSelectedPaths()
+            DispatchQueue.global(qos: .userInteractive).async { [weak self] in
+                let eligiblePaths = GlobalHotkeyManager.shared.getEligibleFinderSelectedPaths()
+                DispatchQueue.main.async {
+                    guard let self = self, let win = self.window, win.isVisible else { return }
+                    if self.documents.contains(where: { $0.isModified }) { return }
 
-            // 1. AUTO-CLOSE: If no item is selected or selection is incompatible/disabled, CLOSE immediately!
-            if eligiblePaths.isEmpty {
-                closeWindow()
-                return
-            }
+                    // 1. AUTO-CLOSE: If no item is selected or selection is incompatible/disabled, CLOSE immediately!
+                    if eligiblePaths.isEmpty {
+                        self.closeWindow()
+                        return
+                    }
 
-            // 2. Check if selected paths differ from our currently open documents
-            let currentPaths = documents.map { $0.fileURL.path }
-            if eligiblePaths != currentPaths {
-                openFiles(at: eligiblePaths)
+                    // 2. Check if selected paths differ from our currently open documents
+                    let currentPaths = self.documents.map { $0.fileURL.path }
+                    if eligiblePaths != currentPaths {
+                        self.openFiles(at: eligiblePaths)
+                    }
+                }
             }
         }
     }
@@ -699,6 +780,27 @@ public class QuickEditorWindowController: NSWindowController, NSTextViewDelegate
             openWithButton.addItem(withTitle: "Open with Default")
         } else {
             openWithButton.selectItem(at: selectedIndex)
+        }
+    }
+
+    @objc public func triggerOpenWith() {
+        guard let fileURL = currentFileURL else { return }
+        let (preferredBundleId, _) = SettingsManager.shared.getPreferredApp(forExtension: fileURL.pathExtension)
+        if let preferred = preferredBundleId,
+           let targetAppURL = compatibleApps.first(where: { Bundle(url: $0)?.bundleIdentifier == preferred }) {
+            NSWorkspace.shared.open([fileURL], withApplicationAt: targetAppURL, configuration: NSWorkspace.OpenConfiguration(), completionHandler: nil)
+        } else if let firstApp = compatibleApps.first {
+            NSWorkspace.shared.open([fileURL], withApplicationAt: firstApp, configuration: NSWorkspace.OpenConfiguration(), completionHandler: nil)
+        } else {
+            NSWorkspace.shared.open(fileURL)
+        }
+    }
+
+    @objc public func closeTabOrWindow() {
+        if documents.count > 1 {
+            closeTab(at: activeIndex)
+        } else {
+            closeWindow()
         }
     }
 
@@ -761,15 +863,10 @@ public class QuickEditorWindowController: NSWindowController, NSTextViewDelegate
 
         if window.isVisible && SettingsManager.shared.settings.enableQuickLookAnimation {
             let currentFrame = window.frame
-            var closeFrame: NSRect
-            if let sourceRect = getFinderSourceRect() {
-                closeFrame = sourceRect
-            } else {
-                closeFrame = NSRect(x: currentFrame.midX - 50, y: currentFrame.midY - 40, width: 100, height: 80)
-            }
+            let closeFrame = currentFrame.insetBy(dx: 28, dy: 20)
 
             NSAnimationContext.runAnimationGroup({ context in
-                context.duration = 0.16
+                context.duration = 0.14
                 context.timingFunction = CAMediaTimingFunction(name: .easeIn)
                 window.animator().setFrame(closeFrame, display: true)
                 window.animator().alphaValue = 0.0

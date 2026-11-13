@@ -13,6 +13,8 @@ static NSMutableDictionary<NSString *, NSImage *> *sIconCache = nil;
 @interface FinderSync ()
 @property (nonatomic, strong) NSDictionary *cachedSettings;
 @property (nonatomic, strong) NSDate *settingsLastModified;
+@property (nonatomic, strong) NSURL *lastTargetedURL;
+@property (nonatomic, strong) NSArray<NSURL *> *lastSelectedURLs;
 @end
 
 @implementation FinderSync
@@ -194,6 +196,36 @@ static NSMutableDictionary<NSString *, NSImage *> *sIconCache = nil;
     return NO;
 }
 
+- (NSURL *)fallbackFinderTargetURL {
+    @try {
+        NSAppleScript *as = [[NSAppleScript alloc] initWithSource:
+            @"tell application \"Finder\"\n"
+            @"  if (count of Finder windows) > 0 then\n"
+            @"    return POSIX path of (target of front Finder window as alias)\n"
+            @"  else\n"
+            @"    return POSIX path of (desktop as alias)\n"
+            @"  end if\n"
+            @"end tell"];
+        NSDictionary *err = nil;
+        NSAppleEventDescriptor *desc = [as executeAndReturnError:&err];
+        NSString *path = desc.stringValue;
+        if (path && path.length > 0) {
+            return [NSURL fileURLWithPath:path];
+        }
+    } @catch (NSException *e) {
+        NSLog(@"[FinderSync] fallbackFinderTargetURL exception: %@", e);
+    }
+
+    struct passwd *pw = getpwuid(getuid());
+    if (pw && pw->pw_dir) {
+        NSString *desktop = [NSString stringWithFormat:@"%s/Desktop", pw->pw_dir];
+        if ([[NSFileManager defaultManager] fileExistsAtPath:desktop]) {
+            return [NSURL fileURLWithPath:desktop];
+        }
+    }
+    return [NSURL fileURLWithPath:NSHomeDirectory()];
+}
+
 - (NSURL *)effectiveTargetURL {
     NSArray<NSURL *> *selectedItems = [[FIFinderSyncController defaultController] selectedItemURLs];
     if (selectedItems.count == 1) {
@@ -202,7 +234,10 @@ static NSMutableDictionary<NSString *, NSImage *> *sIconCache = nil;
             return selectedItems.firstObject;
         }
     }
-    return [[FIFinderSyncController defaultController] targetedURL];
+    NSURL *targeted = [[FIFinderSyncController defaultController] targetedURL];
+    if (targeted) return targeted;
+    if (self.lastTargetedURL) return self.lastTargetedURL;
+    return [self fallbackFinderTargetURL];
 }
 
 #pragma mark - High-Performance Cached SF Symbol Icons
@@ -293,6 +328,13 @@ static NSMutableDictionary<NSString *, NSImage *> *sIconCache = nil;
 - (NSMenu *)menuForMenuKind:(FIMenuKind)whichMenu {
     NSMenu *menu = [[NSMenu alloc] initWithTitle:@""];
     menu.autoenablesItems = NO;
+
+    NSURL *currentEffectiveURL = [self effectiveTargetURL];
+    if (currentEffectiveURL) {
+        self.lastTargetedURL = currentEffectiveURL;
+    }
+    self.lastSelectedURLs = [[FIFinderSyncController defaultController] selectedItemURLs];
+
     NSDictionary *settings = [self loadCurrentSettings];
 
     BOOL includeCopyPath = YES;
@@ -385,7 +427,7 @@ static NSMutableDictionary<NSString *, NSImage *> *sIconCache = nil;
             NSMenu *catSubmenu = [[NSMenu alloc] initWithTitle:@""];
             catSubmenu.autoenablesItems = NO;
             for (NSDictionary *item in categorized[cat]) {
-                NSMenuItem *subItem = [self menuItemForFileItem:item];
+                NSMenuItem *subItem = [self menuItemForFileItem:item targetURL:currentEffectiveURL];
                 [catSubmenu addItem:subItem];
             }
 
@@ -398,7 +440,7 @@ static NSMutableDictionary<NSString *, NSImage *> *sIconCache = nil;
     } else {
         // Flat list of enabled items
         for (NSDictionary *item in enabledItems) {
-            NSMenuItem *subItem = [self menuItemForFileItem:item];
+            NSMenuItem *subItem = [self menuItemForFileItem:item targetURL:currentEffectiveURL];
             [submenu addItem:subItem];
         }
     }
@@ -441,12 +483,17 @@ static NSMutableDictionary<NSString *, NSImage *> *sIconCache = nil;
     return menu;
 }
 
-- (NSMenuItem *)menuItemForFileItem:(NSDictionary *)item {
+- (NSMenuItem *)menuItemForFileItem:(NSDictionary *)item targetURL:(NSURL *)targetURL {
     NSString *name = item[@"name"] ?: [NSString stringWithFormat:@".%@ File", item[@"ext"]];
     NSMenuItem *menuItem = [[NSMenuItem alloc] initWithTitle:name action:@selector(handleCreateFileItem:) keyEquivalent:@""];
     menuItem.target = self;
     menuItem.enabled = YES;
-    menuItem.representedObject = item;
+
+    NSMutableDictionary *payload = [NSMutableDictionary dictionaryWithDictionary:item];
+    if (targetURL) {
+        payload[@"_targetDirURL"] = targetURL;
+    }
+    menuItem.representedObject = payload;
 
     NSString *ext = [item[@"ext"] lowercaseString] ?: @"txt";
     NSString *creatorType = item[@"creatorType"] ?: @"standard";
@@ -466,7 +513,8 @@ static NSMutableDictionary<NSString *, NSImage *> *sIconCache = nil;
 
 - (void)quickEditSelectedFile:(id)sender {
     NSArray<NSURL *> *items = [[FIFinderSyncController defaultController] selectedItemURLs];
-    NSURL *targetURL = items.firstObject ?: [[FIFinderSyncController defaultController] targetedURL];
+    NSURL *targetURL = items.firstObject ?: self.lastTargetedURL ?: [[FIFinderSyncController defaultController] targetedURL];
+    if (!targetURL) targetURL = [self fallbackFinderTargetURL];
 
     if (!targetURL) return;
 
@@ -489,7 +537,8 @@ static NSMutableDictionary<NSString *, NSImage *> *sIconCache = nil;
 
 - (void)copyPathToClipboard:(id)sender {
     NSArray<NSURL *> *selectedItems = [[FIFinderSyncController defaultController] selectedItemURLs];
-    NSURL *targetURL = (selectedItems.count > 0) ? selectedItems.firstObject : [[FIFinderSyncController defaultController] targetedURL];
+    NSURL *targetURL = (selectedItems.count > 0) ? selectedItems.firstObject : self.lastTargetedURL ?: [[FIFinderSyncController defaultController] targetedURL];
+    if (!targetURL) targetURL = [self fallbackFinderTargetURL];
     if (!targetURL) return;
 
     NSString *path = targetURL.path;
@@ -500,6 +549,7 @@ static NSMutableDictionary<NSString *, NSImage *> *sIconCache = nil;
 
 - (void)openTerminalAtPath:(id)sender {
     NSURL *targetURL = [self effectiveTargetURL];
+    if (!targetURL) targetURL = [self fallbackFinderTargetURL];
     if (!targetURL) return;
 
     NSDictionary *settings = [self loadCurrentSettings];
@@ -522,38 +572,42 @@ static NSMutableDictionary<NSString *, NSImage *> *sIconCache = nil;
 }
 
 - (void)handleCreateFileItem:(NSMenuItem *)sender {
-    NSDictionary *item = (NSDictionary *)sender.representedObject;
-    if (!item) return;
+    NSDictionary *payload = (NSDictionary *)sender.representedObject;
+    if (!payload) return;
 
-    NSString *creatorType = item[@"creatorType"] ?: @"standard";
+    NSURL *targetURL = payload[@"_targetDirURL"] ?: self.lastTargetedURL ?: [self effectiveTargetURL];
+    if (!targetURL) {
+        targetURL = [self fallbackFinderTargetURL];
+    }
+
+    NSString *creatorType = payload[@"creatorType"] ?: @"standard";
 
     if ([creatorType isEqualToString:@"docx"]) {
-        [self createNewWordDocument];
+        [self copyBundleTemplateNamed:@"Blank.docx" extension:@"docx" targetURL:targetURL];
     } else if ([creatorType isEqualToString:@"xlsx"]) {
-        [self createNewExcelDocument];
+        [self copyBundleTemplateNamed:@"Blank.xlsx" extension:@"xlsx" targetURL:targetURL];
     } else if ([creatorType isEqualToString:@"pptx"]) {
-        [self createNewPowerPointDocument];
+        [self copyBundleTemplateNamed:@"Blank.pptx" extension:@"pptx" targetURL:targetURL];
     } else if ([creatorType isEqualToString:@"pages"]) {
-        [self createNewPagesDocument];
+        [self copyBundleTemplateNamed:@"Blank.pages" extension:@"pages" targetURL:targetURL];
     } else if ([creatorType isEqualToString:@"numbers"]) {
-        [self createNewNumbersDocument];
+        [self copyBundleTemplateNamed:@"Blank.numbers" extension:@"numbers" targetURL:targetURL];
     } else if ([creatorType isEqualToString:@"key"]) {
-        [self createNewKeynoteDocument];
+        [self copyBundleTemplateNamed:@"Blank.key" extension:@"key" targetURL:targetURL];
     } else {
-        NSString *ext = item[@"ext"] ?: @"txt";
-        NSString *template = item[@"template"] ?: @"";
-        [self createFileWithExtension:ext templateContent:template];
+        NSString *ext = payload[@"ext"] ?: @"txt";
+        NSString *template = payload[@"template"] ?: @"";
+        [self createFileWithExtension:ext templateContent:template targetURL:targetURL];
     }
 }
 
 #pragma mark - Fast Native Document Creation (Zero AppleScript Overhead)
 
-- (void)createFileWithExtension:(NSString *)extension templateContent:(NSString *)templateContent {
-    NSURL *targetURL = [self effectiveTargetURL];
+- (void)createFileWithExtension:(NSString *)extension templateContent:(NSString *)templateContent targetURL:(NSURL *)targetURL {
     if (!targetURL) {
-        NSLog(@"[FinderSync] Cannot create file: effectiveTargetURL is nil");
-        return;
+        targetURL = [self fallbackFinderTargetURL];
     }
+    if (!targetURL) return;
 
     NSString *baseName = NSLocalizedString(@"Untitled", nil);
     NSString *filePath = [targetURL.path stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.%@", baseName, extension]];
@@ -581,32 +635,10 @@ static NSMutableDictionary<NSString *, NSImage *> *sIconCache = nil;
     [[NSWorkspace sharedWorkspace] activateFileViewerSelectingURLs:@[fileURL]];
 }
 
-- (void)createNewWordDocument {
-    [self copyBundleTemplateNamed:@"Blank.docx" extension:@"docx"];
-}
-
-- (void)createNewExcelDocument {
-    [self copyBundleTemplateNamed:@"Blank.xlsx" extension:@"xlsx"];
-}
-
-- (void)createNewPowerPointDocument {
-    [self copyBundleTemplateNamed:@"Blank.pptx" extension:@"pptx"];
-}
-
-- (void)createNewPagesDocument {
-    [self copyBundleTemplateNamed:@"Blank.pages" extension:@"pages"];
-}
-
-- (void)createNewNumbersDocument {
-    [self copyBundleTemplateNamed:@"Blank.numbers" extension:@"numbers"];
-}
-
-- (void)createNewKeynoteDocument {
-    [self copyBundleTemplateNamed:@"Blank.key" extension:@"key"];
-}
-
-- (void)copyBundleTemplateNamed:(NSString *)templateName extension:(NSString *)extension {
-    NSURL *targetURL = [self effectiveTargetURL];
+- (void)copyBundleTemplateNamed:(NSString *)templateName extension:(NSString *)extension targetURL:(NSURL *)targetURL {
+    if (!targetURL) {
+        targetURL = [self fallbackFinderTargetURL];
+    }
     if (!targetURL) return;
 
     NSString *baseName = NSLocalizedString(@"Untitled", nil);
@@ -624,7 +656,8 @@ static NSMutableDictionary<NSString *, NSImage *> *sIconCache = nil;
     NSString *templatePath = [bundle pathForResource:[templateName stringByDeletingPathExtension] ofType:[templateName pathExtension]];
 
     if (!templatePath) {
-        NSLog(@"[FinderSync] Failed to find %@ template in bundle", templateName);
+        NSLog(@"[FinderSync] Failed to find %@ template in bundle, requesting main app helper", templateName);
+        [self requestMainAppToCreateFileAtPath:filePath content:nil templatePath:templateName];
         return;
     }
 

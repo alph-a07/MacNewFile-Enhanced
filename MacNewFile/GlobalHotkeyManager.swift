@@ -174,11 +174,35 @@ public class GlobalHotkeyManager: NSObject {
         let paths = getFinderSelectedFilePaths()
         return paths.filter { path in
             var isDir: ObjCBool = false
-            if FileManager.default.fileExists(atPath: path, isDirectory: &isDir), !isDir.boolValue {
-                let ext = URL(fileURLWithPath: path).pathExtension.lowercased()
-                return SettingsManager.shared.isExtensionEnabledForQuickEditor(ext: ext)
+            guard FileManager.default.fileExists(atPath: path, isDirectory: &isDir), !isDir.boolValue else {
+                return false
             }
-            return false
+
+            let url = URL(fileURLWithPath: path)
+            var ext = url.pathExtension.lowercased()
+
+            if ext.isEmpty {
+                let name = url.lastPathComponent.lowercased()
+                if name.hasPrefix(".") {
+                    let sub = String(name.dropFirst())
+                    if sub == "env" || sub.hasPrefix("env.") {
+                        ext = "env"
+                    } else if sub.contains("zsh") || sub.contains("bash") || sub == "profile" {
+                        ext = "sh"
+                    } else {
+                        ext = "txt"
+                    }
+                } else if name == "license" || name == "readme" || name == "makefile" || name == "dockerfile" {
+                    ext = "txt"
+                }
+            } else {
+                if ext == "tsx" { ext = "ts" }
+                else if ext == "jsx" { ext = "js" }
+                else if ext == "zsh" || ext == "bash" { ext = "sh" }
+                else if ext == "conf" { ext = "ini" }
+            }
+
+            return SettingsManager.shared.isExtensionEnabledForQuickEditor(ext: ext)
         }
     }
 }
