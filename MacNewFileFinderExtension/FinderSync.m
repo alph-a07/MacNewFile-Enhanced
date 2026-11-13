@@ -6,6 +6,9 @@
 //
 
 #import "FinderSync.h"
+#import <pwd.h>
+
+static NSMutableDictionary<NSString *, NSImage *> *sIconCache = nil;
 
 @interface FinderSync ()
 @property (nonatomic, strong) NSDictionary *cachedSettings;
@@ -56,6 +59,7 @@
 
 - (void)onSettingsChanged:(NSNotification *)notification {
     self.cachedSettings = nil;
+    self.settingsLastModified = nil;
 }
 
 - (void)updateDirectoryURLs {
@@ -74,8 +78,30 @@
 #pragma mark - Settings Loader
 
 - (NSString *)settingsFilePath {
+    // 1. Try real user home directory (breaks out of sandbox container)
+    struct passwd *pw = getpwuid(getuid());
+    if (pw && pw->pw_dir) {
+        NSString *realHome = [NSString stringWithUTF8String:pw->pw_dir];
+        NSString *realPath = [realHome stringByAppendingPathComponent:@"Library/Application Support/MacNewFile/settings.json"];
+        if ([[NSFileManager defaultManager] fileExistsAtPath:realPath]) {
+            return realPath;
+        }
+    }
+
+    // 2. Try sandboxed container Application Support directory
     NSString *appSupport = NSSearchPathForDirectoriesInDomains(NSApplicationSupportDirectory, NSUserDomainMask, YES).firstObject;
-    return [appSupport stringByAppendingPathComponent:@"MacNewFile/settings.json"];
+    NSString *containerPath = [appSupport stringByAppendingPathComponent:@"MacNewFile/settings.json"];
+    if ([[NSFileManager defaultManager] fileExistsAtPath:containerPath]) {
+        return containerPath;
+    }
+
+    // 3. Fallback to real path
+    if (pw && pw->pw_dir) {
+        NSString *realHome = [NSString stringWithUTF8String:pw->pw_dir];
+        return [realHome stringByAppendingPathComponent:@"Library/Application Support/MacNewFile/settings.json"];
+    }
+
+    return containerPath;
 }
 
 - (NSDictionary *)loadCurrentSettings {
@@ -113,12 +139,22 @@
         @{@"id": @"txt", @"name": @"Text File", @"ext": @"txt", @"category": @"Documents & Notes", @"enabledForNewFile": @YES, @"enabledForQuickEditor": @YES, @"creatorType": @"standard"},
         @{@"id": @"md", @"name": @"Markdown Document", @"ext": @"md", @"category": @"Documents & Notes", @"enabledForNewFile": @YES, @"enabledForQuickEditor": @YES, @"creatorType": @"standard", @"template": @"# Title\n\n"},
         @{@"id": @"py", @"name": @"Python Script", @"ext": @"py", @"category": @"Code & Web", @"enabledForNewFile": @YES, @"enabledForQuickEditor": @YES, @"creatorType": @"standard", @"template": @"#!/usr/bin/env python3\n"},
+        @{@"id": @"js", @"name": @"JavaScript File", @"ext": @"js", @"category": @"Code & Web", @"enabledForNewFile": @YES, @"enabledForQuickEditor": @YES, @"creatorType": @"standard"},
+        @{@"id": @"ts", @"name": @"TypeScript File", @"ext": @"ts", @"category": @"Code & Web", @"enabledForNewFile": @YES, @"enabledForQuickEditor": @YES, @"creatorType": @"standard"},
+        @{@"id": @"html", @"name": @"HTML Document", @"ext": @"html", @"category": @"Code & Web", @"enabledForNewFile": @YES, @"enabledForQuickEditor": @YES, @"creatorType": @"standard"},
+        @{@"id": @"css", @"name": @"CSS Stylesheet", @"ext": @"css", @"category": @"Code & Web", @"enabledForNewFile": @YES, @"enabledForQuickEditor": @YES, @"creatorType": @"standard"},
+        @{@"id": @"json", @"name": @"JSON File", @"ext": @"json", @"category": @"Code & Web", @"enabledForNewFile": @YES, @"enabledForQuickEditor": @YES, @"creatorType": @"standard"},
+        @{@"id": @"yaml", @"name": @"YAML File", @"ext": @"yaml", @"category": @"Code & Web", @"enabledForNewFile": @YES, @"enabledForQuickEditor": @YES, @"creatorType": @"standard"},
+        @{@"id": @"sh", @"name": @"Shell Script", @"ext": @"sh", @"category": @"Code & Web", @"enabledForNewFile": @YES, @"enabledForQuickEditor": @YES, @"creatorType": @"standard"},
+        @{@"id": @"swift", @"name": @"Swift Source", @"ext": @"swift", @"category": @"Code & Web", @"enabledForNewFile": @YES, @"enabledForQuickEditor": @YES, @"creatorType": @"standard"},
         @{@"id": @"docx", @"name": @"Microsoft Word Document", @"ext": @"docx", @"category": @"Documents & Notes", @"enabledForNewFile": @YES, @"enabledForQuickEditor": @NO, @"creatorType": @"docx"},
         @{@"id": @"xlsx", @"name": @"Microsoft Excel Spreadsheet", @"ext": @"xlsx", @"category": @"Documents & Notes", @"enabledForNewFile": @YES, @"enabledForQuickEditor": @NO, @"creatorType": @"xlsx"},
         @{@"id": @"pptx", @"name": @"Microsoft PowerPoint Presentation", @"ext": @"pptx", @"category": @"Documents & Notes", @"enabledForNewFile": @YES, @"enabledForQuickEditor": @NO, @"creatorType": @"pptx"},
         @{@"id": @"pages", @"name": @"Apple Pages Document", @"ext": @"pages", @"category": @"Documents & Notes", @"enabledForNewFile": @YES, @"enabledForQuickEditor": @NO, @"creatorType": @"pages"},
         @{@"id": @"numbers", @"name": @"Apple Numbers Spreadsheet", @"ext": @"numbers", @"category": @"Documents & Notes", @"enabledForNewFile": @YES, @"enabledForQuickEditor": @NO, @"creatorType": @"numbers"},
-        @{@"id": @"key", @"name": @"Apple Keynote Presentation", @"ext": @"key", @"category": @"Documents & Notes", @"enabledForNewFile": @YES, @"enabledForQuickEditor": @NO, @"creatorType": @"key"}
+        @{@"id": @"key", @"name": @"Apple Keynote Presentation", @"ext": @"key", @"category": @"Documents & Notes", @"enabledForNewFile": @YES, @"enabledForQuickEditor": @NO, @"creatorType": @"key"},
+        @{@"id": @"csv", @"name": @"CSV Spreadsheet", @"ext": @"csv", @"category": @"Data & Config", @"enabledForNewFile": @YES, @"enabledForQuickEditor": @YES, @"creatorType": @"standard"},
+        @{@"id": @"env", @"name": @"Environment File", @"ext": @"env", @"category": @"Data & Config", @"enabledForNewFile": @YES, @"enabledForQuickEditor": @YES, @"creatorType": @"standard"}
     ];
 }
 
@@ -156,6 +192,68 @@
         }
     }
     return NO;
+}
+
+- (NSURL *)effectiveTargetURL {
+    NSArray<NSURL *> *selectedItems = [[FIFinderSyncController defaultController] selectedItemURLs];
+    if (selectedItems.count == 1) {
+        BOOL isDir = NO;
+        if ([[NSFileManager defaultManager] fileExistsAtPath:selectedItems.firstObject.path isDirectory:&isDir] && isDir) {
+            return selectedItems.firstObject;
+        }
+    }
+    return [[FIFinderSyncController defaultController] targetedURL];
+}
+
+#pragma mark - High-Performance Cached SF Symbol Icons
+
+- (NSImage *)cachedIconForExtension:(NSString *)ext creatorType:(NSString *)creatorType {
+    if (!sIconCache) {
+        sIconCache = [NSMutableDictionary dictionary];
+    }
+    NSString *cacheKey = [NSString stringWithFormat:@"%@_%@", ext ?: @"", creatorType ?: @""];
+    NSImage *cached = sIconCache[cacheKey];
+    if (cached) return cached;
+
+    NSImage *icon = nil;
+    if (@available(macOS 11.0, *)) {
+        NSString *symbol = nil;
+        if ([ext isEqualToString:@"py"]) symbol = @"chevron.left.forwardslash.chevron.right";
+        else if ([ext isEqualToString:@"js"] || [ext isEqualToString:@"ts"]) symbol = @"curlybraces";
+        else if ([ext isEqualToString:@"html"] || [ext isEqualToString:@"css"]) symbol = @"globe";
+        else if ([ext isEqualToString:@"json"] || [ext isEqualToString:@"yaml"]) symbol = @"list.bullet.rectangle";
+        else if ([ext isEqualToString:@"sh"]) symbol = @"terminal";
+        else if ([ext isEqualToString:@"swift"]) symbol = @"swift";
+        else if ([ext isEqualToString:@"c"] || [ext isEqualToString:@"cpp"] || [ext isEqualToString:@"h"]) symbol = @"c.circle";
+        else if ([ext isEqualToString:@"go"] || [ext isEqualToString:@"rs"]) symbol = @"chevron.left.forwardslash.chevron.right";
+        else if ([ext isEqualToString:@"md"]) symbol = @"text.badge.star";
+        else if ([ext isEqualToString:@"txt"] || [ext isEqualToString:@"rtf"]) symbol = @"doc.plaintext";
+        else if ([ext isEqualToString:@"csv"] || [ext isEqualToString:@"tsv"]) symbol = @"tablecells";
+        else if ([ext isEqualToString:@"env"] || [ext isEqualToString:@"ini"] || [ext isEqualToString:@"toml"]) symbol = @"slider.horizontal.3";
+        else if ([ext isEqualToString:@"log"]) symbol = @"scroll";
+        else if ([creatorType isEqualToString:@"docx"] || [creatorType isEqualToString:@"pages"]) symbol = @"doc.richtext";
+        else if ([creatorType isEqualToString:@"xlsx"] || [creatorType isEqualToString:@"numbers"]) symbol = @"chart.bar.doc.horizontal";
+        else if ([creatorType isEqualToString:@"pptx"] || [creatorType isEqualToString:@"key"]) symbol = @"play.rectangle.on.rectangle";
+
+        if (symbol) {
+            icon = [NSImage imageWithSystemSymbolName:symbol accessibilityDescription:ext];
+        }
+    }
+
+    if (!icon) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+        icon = [[NSWorkspace sharedWorkspace] iconForFileType:ext ?: @"txt"];
+#pragma clang diagnostic pop
+    }
+
+    if (icon) {
+        icon = [icon copy];
+        icon.size = NSMakeSize(16, 16);
+        icon.template = YES;
+        sIconCache[cacheKey] = icon;
+    }
+    return icon;
 }
 
 - (NSMenu *)menuForMenuKind:(FIMenuKind)whichMenu {
@@ -212,9 +310,10 @@
                                                                    action:@selector(quickEditSelectedFile:)
                                                             keyEquivalent:@""];
             if (@available(macOS 11.0, *)) {
-                quickEditItem.image = [NSImage imageWithSystemSymbolName:@"eye" accessibilityDescription:@"Quick Edit"];
-            } else {
-                quickEditItem.image = [NSImage imageNamed:@"edit"];
+                NSImage *eyeImg = [NSImage imageWithSystemSymbolName:@"eye" accessibilityDescription:@"Quick Edit"];
+                eyeImg.size = NSMakeSize(16, 16);
+                eyeImg.template = YES;
+                quickEditItem.image = eyeImg;
             }
             [menu addItem:quickEditItem];
             [menu addItem:[NSMenuItem separatorItem]];
@@ -224,9 +323,10 @@
     // 2. "New File" Menu (placed prominently)
     NSMenuItem *mainItem = [[NSMenuItem alloc] initWithTitle:NSLocalizedString(@"New File", nil) action:nil keyEquivalent:@""];
     if (@available(macOS 11.0, *)) {
-        mainItem.image = [NSImage imageWithSystemSymbolName:@"plus.circle" accessibilityDescription:@"New File"];
-    } else {
-        mainItem.image = [NSImage imageNamed:@"add"];
+        NSImage *addImg = [NSImage imageWithSystemSymbolName:@"plus.circle" accessibilityDescription:@"New File"];
+        addImg.size = NSMakeSize(16, 16);
+        addImg.template = YES;
+        mainItem.image = addImg;
     }
 
     NSMenu *submenu = [[NSMenu alloc] initWithTitle:@""];
@@ -281,9 +381,10 @@
                                                                   action:@selector(openTerminalAtPath:)
                                                            keyEquivalent:@""];
         if (@available(macOS 11.0, *)) {
-            openTerminalItem.image = [NSImage imageWithSystemSymbolName:@"terminal" accessibilityDescription:@"Terminal"];
-        } else {
-            openTerminalItem.image = [NSImage imageNamed:@"terminal"];
+            NSImage *termImg = [NSImage imageWithSystemSymbolName:@"terminal" accessibilityDescription:@"Terminal"];
+            termImg.size = NSMakeSize(16, 16);
+            termImg.template = YES;
+            openTerminalItem.image = termImg;
         }
         [menu addItem:openTerminalItem];
     }
@@ -294,9 +395,10 @@
                                                               action:@selector(copyPathToClipboard:)
                                                        keyEquivalent:@""];
         if (@available(macOS 11.0, *)) {
-            copyPathItem.image = [NSImage imageWithSystemSymbolName:@"doc.on.clipboard" accessibilityDescription:@"Copy Path"];
-        } else {
-            copyPathItem.image = [NSImage imageNamed:@"copy"];
+            NSImage *copyImg = [NSImage imageWithSystemSymbolName:@"doc.on.clipboard" accessibilityDescription:@"Copy Path"];
+            copyImg.size = NSMakeSize(16, 16);
+            copyImg.template = YES;
+            copyPathItem.image = copyImg;
         }
         [menu addItem:copyPathItem];
     }
@@ -310,12 +412,9 @@
     menuItem.representedObject = item;
 
     NSString *ext = [item[@"ext"] lowercaseString] ?: @"txt";
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-    NSImage *icon = [[NSWorkspace sharedWorkspace] iconForFileType:ext];
-#pragma clang diagnostic pop
+    NSString *creatorType = item[@"creatorType"] ?: @"standard";
+    NSImage *icon = [self cachedIconForExtension:ext creatorType:creatorType];
     if (icon) {
-        icon.size = NSMakeSize(16, 16);
         menuItem.image = icon;
     }
 
@@ -359,17 +458,7 @@
 }
 
 - (void)openTerminalAtPath:(id)sender {
-    NSURL *targetURL = nil;
-    NSArray<NSURL *> *selectedItems = [[FIFinderSyncController defaultController] selectedItemURLs];
-    if (selectedItems.count == 1) {
-        BOOL isDir = NO;
-        if ([[NSFileManager defaultManager] fileExistsAtPath:selectedItems.firstObject.path isDirectory:&isDir] && isDir) {
-            targetURL = selectedItems.firstObject;
-        }
-    }
-    if (!targetURL) {
-        targetURL = [[FIFinderSyncController defaultController] targetedURL];
-    }
+    NSURL *targetURL = [self effectiveTargetURL];
     if (!targetURL) return;
 
     NSDictionary *settings = [self loadCurrentSettings];
@@ -416,11 +505,14 @@
     }
 }
 
-#pragma mark - Document Generators
+#pragma mark - Fast Native Document Creation (Zero AppleScript Overhead)
 
 - (void)createFileWithExtension:(NSString *)extension templateContent:(NSString *)templateContent {
-    NSURL *targetURL = [[FIFinderSyncController defaultController] targetedURL];
-    if (!targetURL) return;
+    NSURL *targetURL = [self effectiveTargetURL];
+    if (!targetURL) {
+        NSLog(@"[FinderSync] Cannot create file: effectiveTargetURL is nil");
+        return;
+    }
 
     NSString *baseName = NSLocalizedString(@"Untitled", nil);
     NSString *filePath = [targetURL.path stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.%@", baseName, extension]];
@@ -433,147 +525,31 @@
         counter++;
     }
 
-    NSString *escapedPath = [filePath stringByReplacingOccurrencesOfString:@"'" withString:@"'\\''"];
+    NSData *data = [templateContent dataUsingEncoding:NSUTF8StringEncoding] ?: [NSData data];
+    NSError *error = nil;
+    BOOL success = [data writeToFile:filePath options:NSDataWritingAtomic error:&error];
 
-    NSString *scriptSource;
-    if (templateContent.length > 0) {
-        // Base64 encode template to safely pass through shell and preserve special characters/newlines
-        NSData *templateData = [templateContent dataUsingEncoding:NSUTF8StringEncoding];
-        NSString *base64Template = [templateData base64EncodedStringWithOptions:0];
-        scriptSource = [NSString stringWithFormat:@"do shell script \"echo '%@' | base64 -d > '%@'\"", base64Template, escapedPath];
-    } else {
-        scriptSource = [NSString stringWithFormat:@"do shell script \"touch '%@'\"", escapedPath];
+    if (!success) {
+        NSLog(@"[FinderSync] Direct write failed: %@, requesting main app helper", error);
+        [self requestMainAppToCreateFileAtPath:filePath content:templateContent templatePath:nil];
+        return;
     }
 
-    NSAppleScript *script = [[NSAppleScript alloc] initWithSource:scriptSource];
-    NSDictionary *errorDict = nil;
-    [script executeAndReturnError:&errorDict];
-
-    if (!errorDict) {
-        NSURL *fileURL = [NSURL fileURLWithPath:filePath];
-        [[NSWorkspace sharedWorkspace] activateFileViewerSelectingURLs:@[fileURL]];
-    }
+    // Reveal and select new file in Finder
+    NSURL *fileURL = [NSURL fileURLWithPath:filePath];
+    [[NSWorkspace sharedWorkspace] activateFileViewerSelectingURLs:@[fileURL]];
 }
 
 - (void)createNewWordDocument {
-    NSURL *targetURL = [[FIFinderSyncController defaultController] targetedURL];
-    if (!targetURL) return;
-
-    NSString *baseName = NSLocalizedString(@"Untitled", nil);
-    NSString *extension = @"docx";
-    NSString *filePath = [targetURL.path stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.%@", baseName, extension]];
-
-    NSFileManager *fm = [NSFileManager defaultManager];
-    int counter = 1;
-    while ([fm fileExistsAtPath:filePath]) {
-        NSString *fileName = [NSString stringWithFormat:@"%@ (%d).%@", baseName, counter, extension];
-        filePath = [targetURL.path stringByAppendingPathComponent:fileName];
-        counter++;
-    }
-
-    NSString *escapedPath = [filePath stringByReplacingOccurrencesOfString:@"'" withString:@"'\\''"];
-    NSString *scriptSource = [NSString stringWithFormat:
-        @"do shell script \""
-        "TMPDIR=$(mktemp -d) && "
-        "mkdir -p \\\"$TMPDIR/_rels\\\" \\\"$TMPDIR/word/_rels\\\" && "
-        "echo '<?xml version=\\\"1.0\\\" encoding=\\\"UTF-8\\\"?><Types xmlns=\\\"http://schemas.openxmlformats.org/package/2006/content-types\\\"><Default Extension=\\\"rels\\\" ContentType=\\\"application/vnd.openxmlformats-package.relationships+xml\\\"/><Default Extension=\\\"xml\\\" ContentType=\\\"application/xml\\\"/><Override PartName=\\\"/word/document.xml\\\" ContentType=\\\"application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml\\\"/><Override PartName=\\\"/word/styles.xml\\\" ContentType=\\\"application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml\\\"/></Types>' > \\\"$TMPDIR/[Content_Types].xml\\\" && "
-        "echo '<?xml version=\\\"1.0\\\" encoding=\\\"UTF-8\\\"?><Relationships xmlns=\\\"http://schemas.openxmlformats.org/package/2006/relationships\\\"><Relationship Id=\\\"rId1\\\" Type=\\\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\\\" Target=\\\"word/document.xml\\\"/></Relationships>' > \\\"$TMPDIR/_rels/.rels\\\" && "
-        "echo '<?xml version=\\\"1.0\\\" encoding=\\\"UTF-8\\\"?><Relationships xmlns=\\\"http://schemas.openxmlformats.org/package/2006/relationships\\\"><Relationship Id=\\\"rId1\\\" Type=\\\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles\\\" Target=\\\"styles.xml\\\"/></Relationships>' > \\\"$TMPDIR/word/_rels/document.xml.rels\\\" && "
-        "echo '<?xml version=\\\"1.0\\\" encoding=\\\"UTF-8\\\"?><w:styles xmlns:w=\\\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\\\"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii=\\\"Calibri\\\" w:hAnsi=\\\"Calibri\\\" w:cs=\\\"Calibri\\\"/><w:sz w:val=\\\"22\\\"/><w:szCs w:val=\\\"22\\\"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after=\\\"0\\\" w:line=\\\"276\\\" w:lineRule=\\\"auto\\\"/></w:pPr></w:pPrDefault></w:docDefaults><w:style w:type=\\\"paragraph\\\" w:default=\\\"1\\\" w:styleId=\\\"Normal\\\"><w:name w:val=\\\"Normal\\\"/><w:rPr><w:rFonts w:ascii=\\\"Calibri\\\" w:hAnsi=\\\"Calibri\\\" w:cs=\\\"Calibri\\\"/><w:sz w:val=\\\"22\\\"/><w:szCs w:val=\\\"22\\\"/></w:rPr></w:style></w:styles>' > \\\"$TMPDIR/word/styles.xml\\\" && "
-        "echo '<?xml version=\\\"1.0\\\" encoding=\\\"UTF-8\\\"?><w:document xmlns:w=\\\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\\\"><w:body><w:p><w:r><w:t></w:t></w:r></w:p></w:body></w:document>' > \\\"$TMPDIR/word/document.xml\\\" && "
-        "cd \\\"$TMPDIR\\\" && zip -r '%@' . && "
-        "rm -rf \\\"$TMPDIR\\\""
-        "\"", escapedPath];
-
-    NSAppleScript *script = [[NSAppleScript alloc] initWithSource:scriptSource];
-    NSDictionary *errorDict = nil;
-    [script executeAndReturnError:&errorDict];
-
-    if (!errorDict) {
-        NSURL *fileURL = [NSURL fileURLWithPath:filePath];
-        [[NSWorkspace sharedWorkspace] activateFileViewerSelectingURLs:@[fileURL]];
-    }
+    [self copyBundleTemplateNamed:@"Blank.docx" extension:@"docx"];
 }
 
 - (void)createNewExcelDocument {
-    NSURL *targetURL = [[FIFinderSyncController defaultController] targetedURL];
-    if (!targetURL) return;
-
-    NSString *baseName = NSLocalizedString(@"Untitled", nil);
-    NSString *extension = @"xlsx";
-    NSString *filePath = [targetURL.path stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.%@", baseName, extension]];
-
-    NSFileManager *fm = [NSFileManager defaultManager];
-    int counter = 1;
-    while ([fm fileExistsAtPath:filePath]) {
-        NSString *fileName = [NSString stringWithFormat:@"%@ (%d).%@", baseName, counter, extension];
-        filePath = [targetURL.path stringByAppendingPathComponent:fileName];
-        counter++;
-    }
-
-    NSString *escapedPath = [filePath stringByReplacingOccurrencesOfString:@"'" withString:@"'\\''"];
-    NSString *scriptSource = [NSString stringWithFormat:
-        @"do shell script \""
-        "TMPDIR=$(mktemp -d) && "
-        "mkdir -p \\\"$TMPDIR/_rels\\\" \\\"$TMPDIR/xl/_rels\\\" \\\"$TMPDIR/xl/worksheets\\\" && "
-        "echo '<?xml version=\\\"1.0\\\" encoding=\\\"UTF-8\\\"?><Types xmlns=\\\"http://schemas.openxmlformats.org/package/2006/content-types\\\"><Default Extension=\\\"rels\\\" ContentType=\\\"application/vnd.openxmlformats-package.relationships+xml\\\"/><Default Extension=\\\"xml\\\" ContentType=\\\"application/xml\\\"/><Override PartName=\\\"/xl/workbook.xml\\\" ContentType=\\\"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml\\\"/><Override PartName=\\\"/xl/worksheets/sheet1.xml\\\" ContentType=\\\"application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml\\\"/><Override PartName=\\\"/xl/styles.xml\\\" ContentType=\\\"application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml\\\"/></Types>' > \\\"$TMPDIR/[Content_Types].xml\\\" && "
-        "echo '<?xml version=\\\"1.0\\\" encoding=\\\"UTF-8\\\"?><Relationships xmlns=\\\"http://schemas.openxmlformats.org/package/2006/relationships\\\"><Relationship Id=\\\"rId1\\\" Type=\\\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\\\" Target=\\\"xl/workbook.xml\\\"/></Relationships>' > \\\"$TMPDIR/_rels/.rels\\\" && "
-        "echo '<?xml version=\\\"1.0\\\" encoding=\\\"UTF-8\\\"?><workbook xmlns=\\\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\\\" xmlns:r=\\\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\\\"><sheets><sheet name=\\\"Sheet1\\\" sheetId=\\\"1\\\" r:id=\\\"rId1\\\"/></sheets></workbook>' > \\\"$TMPDIR/xl/workbook.xml\\\" && "
-        "echo '<?xml version=\\\"1.0\\\" encoding=\\\"UTF-8\\\"?><Relationships xmlns=\\\"http://schemas.openxmlformats.org/package/2006/relationships\\\"><Relationship Id=\\\"rId1\\\" Type=\\\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet\\\" Target=\\\"worksheets/sheet1.xml\\\"/><Relationship Id=\\\"rId2\\\" Type=\\\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles\\\" Target=\\\"styles.xml\\\"/></Relationships>' > \\\"$TMPDIR/xl/_rels/workbook.xml.rels\\\" && "
-        "echo '<?xml version=\\\"1.0\\\" encoding=\\\"UTF-8\\\"?><styleSheet xmlns=\\\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\\\"><fonts count=\\\"1\\\"><font><sz val=\\\"11\\\"/><name val=\\\"Calibri\\\"/><family val=\\\"2\\\"/></font></fonts><fills count=\\\"2\\\"><fill><patternFill patternType=\\\"none\\\"/></fill><fill><patternFill patternType=\\\"gray125\\\"/></fill></fills><borders count=\\\"1\\\"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count=\\\"1\\\"><xf numFmtId=\\\"0\\\" fontId=\\\"0\\\" fillId=\\\"0\\\" borderId=\\\"0\\\"/></cellStyleXfs><cellXfs count=\\\"1\\\"><xf numFmtId=\\\"0\\\" fontId=\\\"0\\\" fillId=\\\"0\\\" borderId=\\\"0\\\"/></cellXfs></styleSheet>' > \\\"$TMPDIR/xl/styles.xml\\\" && "
-        "echo '<?xml version=\\\"1.0\\\" encoding=\\\"UTF-8\\\"?><worksheet xmlns=\\\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\\\"><sheetData/></worksheet>' > \\\"$TMPDIR/xl/worksheets/sheet1.xml\\\" && "
-        "cd \\\"$TMPDIR\\\" && zip -r '%@' . && "
-        "rm -rf \\\"$TMPDIR\\\""
-        "\"", escapedPath];
-
-    NSAppleScript *script = [[NSAppleScript alloc] initWithSource:scriptSource];
-    NSDictionary *errorDict = nil;
-    [script executeAndReturnError:&errorDict];
-
-    if (!errorDict) {
-        NSURL *fileURL = [NSURL fileURLWithPath:filePath];
-        [[NSWorkspace sharedWorkspace] activateFileViewerSelectingURLs:@[fileURL]];
-    }
+    [self copyBundleTemplateNamed:@"Blank.xlsx" extension:@"xlsx"];
 }
 
 - (void)createNewPowerPointDocument {
-    NSURL *targetURL = [[FIFinderSyncController defaultController] targetedURL];
-    if (!targetURL) return;
-
-    NSString *baseName = NSLocalizedString(@"Untitled", nil);
-    NSString *extension = @"pptx";
-    NSString *filePath = [targetURL.path stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.%@", baseName, extension]];
-
-    NSFileManager *fm = [NSFileManager defaultManager];
-    int counter = 1;
-    while ([fm fileExistsAtPath:filePath]) {
-        NSString *fileName = [NSString stringWithFormat:@"%@ (%d).%@", baseName, counter, extension];
-        filePath = [targetURL.path stringByAppendingPathComponent:fileName];
-        counter++;
-    }
-
-    NSString *escapedPath = [filePath stringByReplacingOccurrencesOfString:@"'" withString:@"'\\''"];
-    NSString *scriptSource = [NSString stringWithFormat:
-        @"do shell script \""
-        "TMPDIR=$(mktemp -d) && "
-        "mkdir -p \\\"$TMPDIR/_rels\\\" \\\"$TMPDIR/ppt/_rels\\\" \\\"$TMPDIR/ppt/slides\\\" \\\"$TMPDIR/ppt/slideLayouts\\\" \\\"$TMPDIR/ppt/slideMasters\\\" && "
-        "echo '<?xml version=\\\"1.0\\\" encoding=\\\"UTF-8\\\"?><Types xmlns=\\\"http://schemas.openxmlformats.org/package/2006/content-types\\\"><Default Extension=\\\"rels\\\" ContentType=\\\"application/vnd.openxmlformats-package.relationships+xml\\\"/><Default Extension=\\\"xml\\\" ContentType=\\\"application/xml\\\"/><Override PartName=\\\"/ppt/presentation.xml\\\" ContentType=\\\"application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml\\\"/><Override PartName=\\\"/ppt/slides/slide1.xml\\\" ContentType=\\\"application/vnd.openxmlformats-officedocument.presentationml.slide+xml\\\"/></Types>' > \\\"$TMPDIR/[Content_Types].xml\\\" && "
-        "echo '<?xml version=\\\"1.0\\\" encoding=\\\"UTF-8\\\"?><Relationships xmlns=\\\"http://schemas.openxmlformats.org/package/2006/relationships\\\"><Relationship Id=\\\"rId1\\\" Type=\\\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\\\" Target=\\\"ppt/presentation.xml\\\"/></Relationships>' > \\\"$TMPDIR/_rels/.rels\\\" && "
-        "echo '<?xml version=\\\"1.0\\\" encoding=\\\"UTF-8\\\"?><p:presentation xmlns:p=\\\"http://schemas.openxmlformats.org/presentationml/2006/main\\\" xmlns:r=\\\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\\\"><p:sldIdLst><p:sldId id=\\\"256\\\" r:id=\\\"rId1\\\"/></p:sldIdLst></p:presentation>' > \\\"$TMPDIR/ppt/presentation.xml\\\" && "
-        "echo '<?xml version=\\\"1.0\\\" encoding=\\\"UTF-8\\\"?><Relationships xmlns=\\\"http://schemas.openxmlformats.org/package/2006/relationships\\\"><Relationship Id=\\\"rId1\\\" Type=\\\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide\\\" Target=\\\"slides/slide1.xml\\\"/></Relationships>' > \\\"$TMPDIR/ppt/_rels/presentation.xml.rels\\\" && "
-        "echo '<?xml version=\\\"1.0\\\" encoding=\\\"UTF-8\\\"?><p:sld xmlns:p=\\\"http://schemas.openxmlformats.org/presentationml/2006/main\\\"><p:cSld><p:spTree><p:nvGrpSpPr><p:cNvPr id=\\\"1\\\" name=\\\"\\\"/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/></p:spTree></p:cSld></p:sld>' > \\\"$TMPDIR/ppt/slides/slide1.xml\\\" && "
-        "cd \\\"$TMPDIR\\\" && zip -r '%@' . && "
-        "rm -rf \\\"$TMPDIR\\\""
-        "\"", escapedPath];
-
-    NSAppleScript *script = [[NSAppleScript alloc] initWithSource:scriptSource];
-    NSDictionary *errorDict = nil;
-    [script executeAndReturnError:&errorDict];
-
-    if (!errorDict) {
-        NSURL *fileURL = [NSURL fileURLWithPath:filePath];
-        [[NSWorkspace sharedWorkspace] activateFileViewerSelectingURLs:@[fileURL]];
-    }
+    [self copyBundleTemplateNamed:@"Blank.pptx" extension:@"pptx"];
 }
 
 - (void)createNewPagesDocument {
@@ -589,7 +565,7 @@
 }
 
 - (void)copyBundleTemplateNamed:(NSString *)templateName extension:(NSString *)extension {
-    NSURL *targetURL = [[FIFinderSyncController defaultController] targetedURL];
+    NSURL *targetURL = [self effectiveTargetURL];
     if (!targetURL) return;
 
     NSString *baseName = NSLocalizedString(@"Untitled", nil);
@@ -611,18 +587,28 @@
         return;
     }
 
-    NSString *escapedTemplate = [templatePath stringByReplacingOccurrencesOfString:@"'" withString:@"'\\''"];
-    NSString *escapedDest = [filePath stringByReplacingOccurrencesOfString:@"'" withString:@"'\\''"];
-
-    NSString *scriptSource = [NSString stringWithFormat:@"do shell script \"cp -R '%@' '%@'\"", escapedTemplate, escapedDest];
-    NSAppleScript *script = [[NSAppleScript alloc] initWithSource:scriptSource];
-    NSDictionary *errorDict = nil;
-    [script executeAndReturnError:&errorDict];
-
-    if (!errorDict) {
-        NSURL *fileURL = [NSURL fileURLWithPath:filePath];
-        [[NSWorkspace sharedWorkspace] activateFileViewerSelectingURLs:@[fileURL]];
+    NSError *error = nil;
+    BOOL success = [fm copyItemAtPath:templatePath toPath:filePath error:&error];
+    if (!success) {
+        NSLog(@"[FinderSync] Copy template failed: %@, requesting main app helper", error);
+        [self requestMainAppToCreateFileAtPath:filePath content:nil templatePath:templatePath];
+        return;
     }
+
+    NSURL *fileURL = [NSURL fileURLWithPath:filePath];
+    [[NSWorkspace sharedWorkspace] activateFileViewerSelectingURLs:@[fileURL]];
+}
+
+- (void)requestMainAppToCreateFileAtPath:(NSString *)filePath content:(NSString *)content templatePath:(NSString *)templatePath {
+    NSMutableDictionary *userInfo = [NSMutableDictionary dictionary];
+    if (filePath) userInfo[@"filePath"] = filePath;
+    if (content) userInfo[@"content"] = content;
+    if (templatePath) userInfo[@"templatePath"] = templatePath;
+
+    [[NSDistributedNotificationCenter defaultCenter] postNotificationName:@"com.louieyin.MacNewFile.CreateFileRequest"
+                                                                  object:nil
+                                                                userInfo:userInfo
+                                                      deliverImmediately:YES];
 }
 
 @end

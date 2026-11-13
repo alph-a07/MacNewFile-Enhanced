@@ -56,6 +56,13 @@
                                                      forEventClass:kInternetEventClass
                                                         andEventID:kAEGetURL];
 
+    // Register distributed notification for file creation helper from sandboxed extension
+    [[NSDistributedNotificationCenter defaultCenter] addObserver:self
+                                                        selector:@selector(handleCreateFileRequest:)
+                                                            name:@"com.louieyin.MacNewFile.CreateFileRequest"
+                                                          object:nil
+                                              suspensionBehavior:NSNotificationSuspensionBehaviorDeliverImmediately];
+
     // Register application in Login Items as a background app
     if (@available(macOS 13.0, *)) {
         dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0), ^{
@@ -179,6 +186,32 @@
             [[QuickEditorWindowController sharedController] openFileAtPath:item.value];
             break;
         }
+    }
+}
+
+- (void)handleCreateFileRequest:(NSNotification *)notification {
+    NSDictionary *userInfo = notification.userInfo;
+    NSString *filePath = userInfo[@"filePath"];
+    NSString *content = userInfo[@"content"] ?: @"";
+    NSString *templatePath = userInfo[@"templatePath"];
+
+    if (!filePath) return;
+
+    NSFileManager *fm = [NSFileManager defaultManager];
+    NSError *error = nil;
+
+    if (templatePath.length > 0 && [fm fileExistsAtPath:templatePath]) {
+        [fm copyItemAtPath:templatePath toPath:filePath error:&error];
+    } else {
+        NSData *data = [content dataUsingEncoding:NSUTF8StringEncoding] ?: [NSData data];
+        [data writeToFile:filePath options:NSDataWritingAtomic error:&error];
+    }
+
+    if (!error) {
+        NSURL *fileURL = [NSURL fileURLWithPath:filePath];
+        [[NSWorkspace sharedWorkspace] activateFileViewerSelectingURLs:@[fileURL]];
+    } else {
+        NSLog(@"[MacNewFile] Main app createFile error: %@", error);
     }
 }
 

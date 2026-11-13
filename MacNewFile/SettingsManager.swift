@@ -67,6 +67,12 @@ public class SettingsManager: NSObject, ObservableObject {
             let data = try encoder.encode(settings)
             try data.write(to: settingsFileURL, options: .atomic)
 
+            // Also write to Finder extension container so sandboxed extension always has immediate access
+            let containerDir = fileManager.homeDirectoryForCurrentUser
+                .appendingPathComponent("Library/Containers/com.louieyin.MacNewFile.MacNewFileFinderExtension/Data/Library/Application Support/MacNewFile")
+            try? fileManager.createDirectory(at: containerDir, withIntermediateDirectories: true)
+            try? data.write(to: containerDir.appendingPathComponent("settings.json"), options: .atomic)
+
             // Notify distributed listeners (such as Finder extension)
             DistributedNotificationCenter.default().postNotificationName(
                 NSNotification.Name("com.louieyin.MacNewFile.SettingsChanged"),
