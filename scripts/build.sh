@@ -107,15 +107,17 @@ echo "Code signing main application..."
 codesign --force --sign - --entitlements "${ROOT_DIR}/MacNewFile/MacNewFile.entitlements" "${APP_DIR}"
 
 # 8. Install to /Applications for system FinderSync discovery
-echo "Installing to /Applications/MacNewFile.app..."
-rm -rf /Applications/MacNewFile.app
-cp -R "${APP_DIR}" /Applications/
+if [ "${INSTALL_APP:-1}" != "0" ]; then
+    echo "Installing to /Applications/MacNewFile.app..."
+    rm -rf /Applications/MacNewFile.app 2>/dev/null || true
+    cp -R "${APP_DIR}" /Applications/ 2>/dev/null || true
 
-# 9. Register with LaunchServices & pluginkit
-echo "Registering with LaunchServices and pluginkit..."
-/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f /Applications/MacNewFile.app || true
-pluginkit -a /Applications/MacNewFile.app/Contents/PlugIns/MacNewFileFinderExtension.appex || true
-pluginkit -e use -i com.louieyin.MacNewFile.MacNewFileFinderExtension || true
+    # 9. Register with LaunchServices & pluginkit
+    echo "Registering with LaunchServices and pluginkit..."
+    /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f /Applications/MacNewFile.app 2>/dev/null || true
+    pluginkit -a /Applications/MacNewFile.app/Contents/PlugIns/MacNewFileFinderExtension.appex 2>/dev/null || true
+    pluginkit -e use -i com.louieyin.MacNewFile.MacNewFileFinderExtension 2>/dev/null || true
+fi
 
 # 10. Create distribution zip
 echo "Packaging dist/MacNewFile.zip..."

@@ -1,0 +1,57 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & Publish Release
+    runs-on: macos-14
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Select Xcode Version
+        run: |
+          sudo xcode-select -s /Applications/Xcode_15.4.app || sudo xcode-select -s /Applications/Xcode.app
+          xcodebuild -version
+
+      - name: Build MacNewFile Application
+        run: |
+          chmod +x scripts/build.sh
+          ./scripts/build.sh
+
+      - name: Run Full Automated Test Sweep
+        run: |
+          swift tests/run_full_test_sweep.swift
+
+      - name: Prepare Release Assets
+        id: assets
+        run: |
+          TAG_NAME="${GITHUB_REF_NAME:-v3.2.0}"
+          ZIP_NAME="MacNewFile-${TAG_NAME}.zip"
+          cp dist/MacNewFile.zip "${ZIP_NAME}"
+          shasum -a 256 "${ZIP_NAME}" > "${ZIP_NAME}.sha256"
+          shasum -a 256 dist/MacNewFile.zip > "dist/MacNewFile.zip.sha256"
+          echo "tag=${TAG_NAME}" >> $GITHUB_OUTPUT
+          echo "zip_name=${ZIP_NAME}" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: MacNewFile Enhanced ${{ steps.assets.outputs.tag }}
+          files: |
+            ${{ steps.assets.outputs.zip_name }}
+            ${{ steps.assets.outputs.zip_name }}.sha256
+            dist/MacNewFile.zip
+            dist/MacNewFile.zip.sha256
+          draft: false
+          prerelease: false
+          generate_release_notes: true

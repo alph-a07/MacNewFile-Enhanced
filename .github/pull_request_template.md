@@ -2,31 +2,37 @@
 
 <!-- What does this PR do? Why is it needed? -->
 
+## Related Issue
+
+<!-- Fixes #123 -->
+
 ## Type of Change
 
-- [ ] Bug fix
-- [ ] New feature
+- [ ] Bug fix (non-breaking change which fixes an issue)
+- [ ] New feature (non-breaking change which adds functionality)
+- [ ] UI / UX enhancement (visual alignment, Apple HIG compliance)
 - [ ] Refactor / code improvement
 - [ ] Documentation update
-- [ ] Other (describe below)
+- [ ] CI/CD or build tooling
 
-## Testing
+## Testing & Verification
 
-- [ ] Tested on my own Mac
-- macOS version: <!-- e.g. macOS 14.0 -->
-- Xcode version: <!-- e.g. Xcode 15.0 -->
+- [ ] Automated test sweep executed: `swift tests/run_full_test_sweep.swift`
+- [ ] Result: All 180 tests pass
+- [ ] Tested on macOS version: <!-- e.g. macOS 14.5 Sonoma, macOS 15.0 Sequoia -->
+- [ ] Tested architecture: <!-- Apple Silicon (arm64) / Intel (x86_64) -->
+- [ ] Finder right-click context menu tested
+- [ ] Quick Editor (`⌥ Space`) tested on single and multi-file selection
 
 ## Checklist
 
-- [ ] PR is focused on a single feature or fix
-- [ ] Changes do not break existing functionality
-- [ ] Finder extension works correctly after changes
-- [ ] App builds without warnings or errors
+- [ ] My code adheres to the project's coding style guidelines
+- [ ] I have performed a self-review of my own code
+- [ ] I have commented my code, particularly in hard-to-understand areas
+- [ ] I have updated the documentation (`README.md`, `CHANGELOG.md`) if necessary
+- [ ] App builds cleanly via `./scripts/build.sh` without warnings
+- [ ] Finder Extension bundle properly packages into `Contents/PlugIns/`
 
-## Screenshots (if applicable)
+## Screenshots / Video (if applicable)
 
-<!-- Add screenshots or a GIF showing the change -->
-
-## Additional Notes
-
-<!-- Any other context or information -->
+<!-- Add screenshots or screen recordings showing before/after -->
