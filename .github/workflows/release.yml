@@ -12,7 +12,7 @@ permissions:
 jobs:
   release:
     name: Build & Publish Release
-    runs-on: macos-14
+    runs-on: macos-latest
 
     steps:
       - name: Check out repository
@@ -20,8 +20,8 @@ jobs:
 
       - name: Select Xcode Version
         run: |
-          sudo xcode-select -s /Applications/Xcode_15.4.app || sudo xcode-select -s /Applications/Xcode.app
-          xcodebuild -version
+          sudo xcode-select -s /Applications/Xcode_15.4.app 2>/dev/null || sudo xcode-select -s /Applications/Xcode.app 2>/dev/null || true
+          xcodebuild -version 2>/dev/null || true
 
       - name: Build MacNewFile Application
         run: |
