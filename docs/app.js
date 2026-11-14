@@ -98,82 +98,107 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // 4. Hero Screenshot Switcher
+  // 4. Hero Visual Switcher (Video & Screenshots)
   const shotTabs = document.querySelectorAll('.showcase-tab');
-  const heroImg = document.getElementById('mainHeroScreenshot');
+  const heroVideo = document.getElementById('heroDemoVideo');
+  const heroImg = document.getElementById('mainHeroScreenshotImg');
   const captionText = document.getElementById('screenshotCaptionText');
   const captionTag = document.getElementById('screenshotCaptionTag');
 
   const shots = {
+    'shot-demo': {
+      isVideo: true,
+      caption: 'macOS Finder right-click file creation, automatic inline rename, and ⌥ Space in-place Quick Editor.',
+      tag: 'Live Workflow Demo'
+    },
     'shot-finder': {
+      isVideo: false,
       src: 'assets/finder-context-menu.jpg',
-      alt: 'Native macOS Finder context menu with New File submenu',
-      caption: 'Native macOS Finder contextual menu showing "New File" submenu with 34+ curated file types.',
+      alt: 'macOS Finder contextual menu displaying New File submenu with 31 format options',
+      caption: 'macOS Finder contextual menu showing "New File" submenu with 31 built-in formats.',
       tag: 'Finder Context Menu'
     },
     'shot-qe': {
+      isVideo: false,
       src: 'assets/quick-editor-window.png',
-      alt: 'MacNewFile Quick Editor floating panel over Finder',
-      caption: 'In-place Quick Editor panel triggered with Option + Space, featuring syntax line numbers and in-place ⌘S saving.',
-      tag: 'Option + Space Quick Editor'
+      alt: 'MacNewFile Quick Editor floating panel displaying syntax line numbers and in-place code editing',
+      caption: 'In-place Quick Editor panel triggered with ⌥ Space, featuring syntax line numbers and in-place ⌘S saving.',
+      tag: '⌥ Space Quick Editor'
     }
   };
 
   shotTabs.forEach(tab => {
     tab.addEventListener('click', () => {
-      shotTabs.forEach(t => t.classList.remove('active'));
+      shotTabs.forEach(t => {
+        t.classList.remove('active');
+        t.setAttribute('aria-selected', 'false');
+      });
       tab.classList.add('active');
+      tab.setAttribute('aria-selected', 'true');
+
       const key = tab.getAttribute('data-shot');
       const data = shots[key];
-      if (heroImg && data) {
-        heroImg.src = data.src;
-        heroImg.alt = data.alt;
+      if (!data) return;
+
+      if (data.isVideo) {
+        if (heroImg) heroImg.style.display = 'none';
+        if (heroVideo) {
+          heroVideo.style.display = 'block';
+          heroVideo.play().catch(() => {});
+        }
+      } else {
+        if (heroVideo) {
+          heroVideo.pause();
+          heroVideo.style.display = 'none';
+        }
+        if (heroImg) {
+          heroImg.style.display = 'block';
+          heroImg.src = data.src;
+          heroImg.alt = data.alt;
+        }
       }
-      if (captionText && data) {
-        captionText.textContent = data.caption;
-      }
-      if (captionTag && data) {
-        captionTag.textContent = data.tag;
-      }
+
+      if (captionText) captionText.textContent = data.caption;
+      if (captionTag) captionTag.textContent = data.tag;
     });
   });
 
-  // 5. File Formats Catalog
+  // 5. File Formats Catalog (31 Built-in Formats from AppSettings.swift)
   const catalogData = [
+    // Code & Web (16)
     { name: "Python Script", ext: ".py", cat: "dev", type: "Code & Web" },
     { name: "JavaScript File", ext: ".js", cat: "dev", type: "Code & Web" },
     { name: "TypeScript File", ext: ".ts", cat: "dev", type: "Code & Web" },
     { name: "HTML Document", ext: ".html", cat: "dev", type: "Code & Web" },
     { name: "CSS Stylesheet", ext: ".css", cat: "dev", type: "Code & Web" },
-    { name: "JSON Document", ext: ".json", cat: "dev", type: "Code & Web" },
-    { name: "YAML Configuration", ext: ".yaml", cat: "dev", type: "Code & Web" },
+    { name: "JSON File", ext: ".json", cat: "dev", type: "Code & Web" },
+    { name: "YAML File", ext: ".yaml", cat: "dev", type: "Code & Web" },
     { name: "Shell Script", ext: ".sh", cat: "dev", type: "Code & Web" },
     { name: "Swift Source", ext: ".swift", cat: "dev", type: "Code & Web" },
-    { name: "Rust Source", ext: ".rs", cat: "dev", type: "Code & Web" },
-    { name: "Go Source", ext: ".go", cat: "dev", type: "Code & Web" },
     { name: "C Source", ext: ".c", cat: "dev", type: "Code & Web" },
     { name: "C++ Source", ext: ".cpp", cat: "dev", type: "Code & Web" },
-    { name: "C Header", ext: ".h", cat: "dev", type: "Code & Web" },
-    { name: "SQL Query", ext: ".sql", cat: "dev", type: "Code & Web" },
+    { name: "C/C++ Header", ext: ".h", cat: "dev", type: "Code & Web" },
+    { name: "Rust Source", ext: ".rs", cat: "dev", type: "Code & Web" },
+    { name: "Go Source", ext: ".go", cat: "dev", type: "Code & Web" },
+    { name: "SQL Script", ext: ".sql", cat: "dev", type: "Code & Web" },
     { name: "XML Document", ext: ".xml", cat: "dev", type: "Code & Web" },
-    { name: "Markdown Document", ext: ".md", cat: "docs", type: "Documents" },
-    { name: "Plain Text Document", ext: ".txt", cat: "docs", type: "Documents" },
-    { name: "Rich Text Document", ext: ".rtf", cat: "docs", type: "Documents" },
-    { name: "Microsoft Word", ext: ".docx", cat: "docs", type: "Office Template" },
-    { name: "Microsoft Excel", ext: ".xlsx", cat: "docs", type: "Office Template" },
-    { name: "Microsoft PowerPoint", ext: ".pptx", cat: "docs", type: "Office Template" },
-    { name: "Apple Pages Document", ext: ".pages", cat: "docs", type: "iWork Template" },
-    { name: "Apple Numbers Sheet", ext: ".numbers", cat: "docs", type: "iWork Template" },
-    { name: "Apple Keynote Deck", ext: ".key", cat: "docs", type: "iWork Template" },
+    // Documents & Notes (9)
+    { name: "Plain Text", ext: ".txt", cat: "docs", type: "Documents & Notes" },
+    { name: "Markdown Document", ext: ".md", cat: "docs", type: "Documents & Notes" },
+    { name: "Rich Text Document", ext: ".rtf", cat: "docs", type: "Documents & Notes" },
+    { name: "Microsoft Word", ext: ".docx", cat: "docs", type: "Documents & Notes" },
+    { name: "Microsoft Excel", ext: ".xlsx", cat: "docs", type: "Documents & Notes" },
+    { name: "Microsoft PowerPoint", ext: ".pptx", cat: "docs", type: "Documents & Notes" },
+    { name: "Apple Pages", ext: ".pages", cat: "docs", type: "Documents & Notes" },
+    { name: "Apple Numbers", ext: ".numbers", cat: "docs", type: "Documents & Notes" },
+    { name: "Apple Keynote", ext: ".key", cat: "docs", type: "Documents & Notes" },
+    // Data & Config (6)
     { name: "CSV Spreadsheet", ext: ".csv", cat: "sys", type: "Data & Config" },
-    { name: "TSV Spreadsheet", ext: ".tsv", cat: "sys", type: "Data & Config" },
+    { name: "TSV File", ext: ".tsv", cat: "sys", type: "Data & Config" },
     { name: "Environment File", ext: ".env", cat: "sys", type: "Data & Config" },
     { name: "INI Configuration", ext: ".ini", cat: "sys", type: "Data & Config" },
     { name: "TOML Configuration", ext: ".toml", cat: "sys", type: "Data & Config" },
-    { name: "Log Output File", ext: ".log", cat: "sys", type: "Data & Config" },
-    { name: "Git Ignore File", ext: ".gitignore", cat: "sys", type: "Data & Config" },
-    { name: "Zsh Configuration", ext: ".zshrc", cat: "sys", type: "Data & Config" },
-    { name: "Custom User Formats", ext: ".*", cat: "custom", type: "User Defined" }
+    { name: "Log File", ext: ".log", cat: "sys", type: "Data & Config" }
   ];
 
   const grid = document.getElementById('catalogGrid');
@@ -194,14 +219,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (matches.length === 0) {
       grid.innerHTML = `
         <div style="grid-column: 1 / -1; padding: 32px 16px; text-align: center; color: var(--text-muted); font-size: 13px;">
-          No matching formats found. You can add any custom extension (e.g. .svelte, .proto) directly in MacNewFile Settings.
+          No matching formats found. You can add any custom extension (e.g. .svelte, .proto) directly in MacNewFile Settings (⌘,).
         </div>
       `;
       return;
     }
 
     grid.innerHTML = matches.map(item => `
-      <div class="catalog-item">
+      <div class="catalog-item" data-cat="${item.cat}">
         <div>
           <div class="item-name">${item.name}</div>
           <div class="item-ext">${item.ext}</div>
@@ -210,8 +235,6 @@ document.addEventListener('DOMContentLoaded', () => {
       </div>
     `).join('');
   };
-
-  renderGrid();
 
   if (searchInput) {
     searchInput.addEventListener('input', renderGrid);
@@ -226,33 +249,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // 6. Terminal Selector Showcase
-  const termBtns = document.querySelectorAll('.terminal-tab-btn');
-  const termHeader = document.getElementById('termHeaderLabel');
-  const termOutput = document.getElementById('termCommandOutput');
-
-  const terms = {
-    'ghostty': { label: 'Ghostty — zsh (Native Metal)', cmd: 'cd ~/Developer/MacNewFile-Enhanced && open -a Ghostty .' },
-    'iterm': { label: 'iTerm2 — zsh', cmd: 'cd ~/Developer/MacNewFile-Enhanced && open -a iTerm .' },
-    'terminal': { label: 'Terminal.app — zsh (Default)', cmd: 'cd ~/Developer/MacNewFile-Enhanced && open -a Terminal .' },
-    'warp': { label: 'Warp — zsh', cmd: 'cd ~/Developer/MacNewFile-Enhanced && open -a Warp .' },
-    'alacritty': { label: 'Alacritty — zsh', cmd: 'cd ~/Developer/MacNewFile-Enhanced && alacritty --working-directory .' },
-    'kitty': { label: 'kitty — zsh', cmd: 'cd ~/Developer/MacNewFile-Enhanced && kitty --directory .' },
-    'wezterm': { label: 'WezTerm — zsh', cmd: 'cd ~/Developer/MacNewFile-Enhanced && wezterm start --cwd .' }
-  };
-
-  termBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      termBtns.forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      const key = btn.getAttribute('data-term');
-      const data = terms[key] || terms['ghostty'];
-      if (termHeader) termHeader.textContent = data.label;
-      if (termOutput) termOutput.textContent = data.cmd;
-    });
-  });
-
-  // 7. Installation Tabs
+  // 6. Installation Tabs
   const installTriggers = document.querySelectorAll('.install-tab-trigger');
   const installPanels = document.querySelectorAll('.install-panel-box');
 
@@ -267,23 +264,17 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // 8. FAQ Accordion (Smooth & Accessible)
-  document.querySelectorAll('.faq-trigger').forEach(trigger => {
-    trigger.addEventListener('click', () => {
-      const card = trigger.closest('.faq-card');
-      if (!card) return;
-      const isOpen = card.classList.contains('open');
-      
-      // Close all other cards for clean accordion behavior
-      document.querySelectorAll('.faq-card').forEach(c => {
-        if (c !== card) {
-          c.classList.remove('open');
-          c.querySelector('.faq-trigger')?.setAttribute('aria-expanded', 'false');
-        }
-      });
-
-      card.classList.toggle('open', !isOpen);
-      trigger.setAttribute('aria-expanded', !isOpen);
+  // 7. FAQ Accordion Single-Open Helper
+  const faqCards = document.querySelectorAll('details.faq-card');
+  faqCards.forEach(card => {
+    card.addEventListener('toggle', () => {
+      if (card.open) {
+        faqCards.forEach(other => {
+          if (other !== card && other.open) {
+            other.removeAttribute('open');
+          }
+        });
+      }
     });
   });
 });

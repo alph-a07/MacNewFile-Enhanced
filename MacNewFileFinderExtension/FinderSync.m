@@ -9,6 +9,8 @@
 #import <pwd.h>
 
 static NSMutableDictionary<NSString *, NSImage *> *sIconCache = nil;
+static NSMutableDictionary<NSNumber *, NSDictionary *> *sItemsByTag = nil;
+static NSMutableDictionary<NSString *, NSDictionary *> *sItemsByTitle = nil;
 
 @interface FinderSync ()
 @property (nonatomic, strong) NSDictionary *cachedSettings;
@@ -200,11 +202,15 @@ static NSMutableDictionary<NSString *, NSImage *> *sIconCache = nil;
     @try {
         NSAppleScript *as = [[NSAppleScript alloc] initWithSource:
             @"tell application \"Finder\"\n"
-            @"  if (count of Finder windows) > 0 then\n"
-            @"    return POSIX path of (target of front Finder window as alias)\n"
-            @"  else\n"
-            @"    return POSIX path of (desktop as alias)\n"
-            @"  end if\n"
+            @"  try\n"
+            @"    return POSIX path of (insertion location as alias)\n"
+            @"  on error\n"
+            @"    if (count of Finder windows) > 0 then\n"
+            @"      return POSIX path of (target of front Finder window as alias)\n"
+            @"    else\n"
+            @"      return POSIX path of (desktop as alias)\n"
+            @"    end if\n"
+            @"  end try\n"
             @"end tell"];
         NSDictionary *err = nil;
         NSAppleEventDescriptor *desc = [as executeAndReturnError:&err];
@@ -236,8 +242,10 @@ static NSMutableDictionary<NSString *, NSImage *> *sIconCache = nil;
     }
     NSURL *targeted = [[FIFinderSyncController defaultController] targetedURL];
     if (targeted) return targeted;
+    NSURL *fallback = [self fallbackFinderTargetURL];
+    if (fallback) return fallback;
     if (self.lastTargetedURL) return self.lastTargetedURL;
-    return [self fallbackFinderTargetURL];
+    return [NSURL fileURLWithPath:NSHomeDirectory()];
 }
 
 #pragma mark - High-Performance Cached SF Symbol Icons
@@ -484,6 +492,9 @@ static NSMutableDictionary<NSString *, NSImage *> *sIconCache = nil;
 }
 
 - (NSMenuItem *)menuItemForFileItem:(NSDictionary *)item targetURL:(NSURL *)targetURL {
+    if (!sItemsByTag) sItemsByTag = [NSMutableDictionary dictionary];
+    if (!sItemsByTitle) sItemsByTitle = [NSMutableDictionary dictionary];
+
     NSString *name = item[@"name"] ?: [NSString stringWithFormat:@".%@ File", item[@"ext"]];
     NSMenuItem *menuItem = [[NSMenuItem alloc] initWithTitle:name action:@selector(handleCreateFileItem:) keyEquivalent:@""];
     menuItem.target = self;
@@ -495,6 +506,14 @@ static NSMutableDictionary<NSString *, NSImage *> *sIconCache = nil;
     }
     menuItem.representedObject = payload;
 
+    static NSInteger sTagCounter = 1000;
+    menuItem.tag = sTagCounter;
+    sItemsByTag[@(sTagCounter)] = payload;
+    if (name) {
+        sItemsByTitle[name] = payload;
+    }
+    sTagCounter++;
+
     NSString *ext = [item[@"ext"] lowercaseString] ?: @"txt";
     NSString *creatorType = item[@"creatorType"] ?: @"standard";
     NSImage *icon = [self cachedIconForExtension:ext creatorType:creatorType];
@@ -503,6 +522,21 @@ static NSMutableDictionary<NSString *, NSImage *> *sIconCache = nil;
     }
 
     return menuItem;
+}
+
+- (NSDictionary *)findFileItemByNameOrTitle:(NSString *)title {
+    if (!title || title.length == 0) return nil;
+    NSDictionary *settings = [self loadCurrentSettings];
+    NSArray *items = settings[@"fileItems"] ?: [self defaultFallbackItems];
+    for (NSDictionary *item in items) {
+        NSString *name = item[@"name"];
+        if ([name isEqualToString:title]) return item;
+    }
+    for (NSDictionary *item in items) {
+        NSString *ext = item[@"ext"];
+        if (ext && [title localizedCaseInsensitiveContainsString:ext]) return item;
+    }
+    return nil;
 }
 
 - (BOOL)validateMenuItem:(NSMenuItem *)menuItem {
@@ -573,9 +607,27 @@ static NSMutableDictionary<NSString *, NSImage *> *sIconCache = nil;
 
 - (void)handleCreateFileItem:(NSMenuItem *)sender {
     NSDictionary *payload = (NSDictionary *)sender.representedObject;
-    if (!payload) return;
+    if (!payload && sender.tag > 0 && sItemsByTag[@(sender.tag)]) {
+        payload = sItemsByTag[@(sender.tag)];
+    }
+    if (!payload && sender.title.length > 0 && sItemsByTitle[sender.title]) {
+        payload = sItemsByTitle[sender.title];
+    }
+    if (!payload && sender.title.length > 0) {
+        payload = [self findFileItemByNameOrTitle:sender.title];
+    }
+    if (!payload) {
+        NSLog(@"[FinderSync] handleCreateFileItem: cannot resolve item for sender '%@' (tag %ld)", sender.title, (long)sender.tag);
+        return;
+    }
 
-    NSURL *targetURL = payload[@"_targetDirURL"] ?: self.lastTargetedURL ?: [self effectiveTargetURL];
+    NSURL *targetURL = [self effectiveTargetURL];
+    if (!targetURL) {
+        targetURL = payload[@"_targetDirURL"];
+    }
+    if (!targetURL) {
+        targetURL = self.lastTargetedURL;
+    }
     if (!targetURL) {
         targetURL = [self fallbackFinderTargetURL];
     }
@@ -678,6 +730,24 @@ static NSMutableDictionary<NSString *, NSImage *> *sIconCache = nil;
     if (filePath) userInfo[@"filePath"] = filePath;
     if (content) userInfo[@"content"] = content;
     if (templatePath) userInfo[@"templatePath"] = templatePath;
+
+    NSArray<NSRunningApplication *> *runningApps = [NSRunningApplication runningApplicationsWithBundleIdentifier:@"com.louieyin.MacNewFile"];
+    if (runningApps.count == 0) {
+        NSURL *appURL = [[NSWorkspace sharedWorkspace] URLForApplicationWithBundleIdentifier:@"com.louieyin.MacNewFile"];
+        if (appURL) {
+            [[NSWorkspace sharedWorkspace] openApplicationAtURL:appURL
+                                                  configuration:[NSWorkspaceOpenConfiguration configuration]
+                                              completionHandler:^(NSRunningApplication * _Nullable app, NSError * _Nullable error) {
+                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                    [[NSDistributedNotificationCenter defaultCenter] postNotificationName:@"com.louieyin.MacNewFile.CreateFileRequest"
+                                                                                  object:nil
+                                                                                userInfo:userInfo
+                                                                      deliverImmediately:YES];
+                });
+            }];
+            return;
+        }
+    }
 
     [[NSDistributedNotificationCenter defaultCenter] postNotificationName:@"com.louieyin.MacNewFile.CreateFileRequest"
                                                                   object:nil
