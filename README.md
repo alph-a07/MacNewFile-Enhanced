@@ -14,7 +14,8 @@
 [![FOSS](https://img.shields.io/badge/FOSS-100%25%20Free%20%26%20Open%20Source-ff69b4)](#my-promise-as-an-open-source-developer)
 
 <p align="center">
-  <a href="#quick-start">Quick Start</a> •
+  <a href="https://alph-a07.github.io/MacNewFile-Enhanced/"><strong>🌐 Live Interactive Demo</strong></a> •
+  <a href="#overview">Overview</a> •
   <a href="#features">Features</a> •
   <a href="#why-macnewfile-enhanced">Why MacNewFile?</a> •
   <a href="#keyboard-shortcuts">Shortcuts</a> •
