@@ -13,7 +13,7 @@ This checklist tracks the product readiness and open-source standards of **MacNe
 ---
 
 ## 2. Documentation & Guides
-- [x] **GitHub Pages Site**: Deployed at [https://alph-a07.github.io/MacNewFile-Enhanced/](https://alph-a07.github.io/MacNewFile-Enhanced/) with live interactive macOS Finder and Quick Editor simulator, 34+ file type explorer, and terminal selector.
+- [x] **GitHub Pages Site**: Deployed at [https://alph-a07.github.io/MacNewFile-Enhanced/](https://alph-a07.github.io/MacNewFile-Enhanced/) with unslopped Apple-native design, 3-step onboarding guide, real screenshot showcase, 34+ format directory, and responsive layout.
 - [x] **Comprehensive README.md**:
   - [x] Badges (CI status, Releases, License, macOS compatibility, Architecture).
   - [x] Feature highlights with screenshots and visual demonstrations.

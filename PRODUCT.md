@@ -1,55 +1,34 @@
-# Product
-
-<!-- impeccable:product-schema 1 -->
+# Product Specification
 
 ## Platform
+- macOS Native App & Finder Extension (Swift & Objective-C)
+- GitHub Pages Product Website & Documentation (`docs/`)
 
-web
+## Architecture & Stack
+- **Native macOS**: Cocoa, SwiftUI, FinderSync framework, Carbon Global Hotkeys.
+- **Web / Documentation**: Semantic HTML5, modern vanilla CSS3 with custom properties, zero external runtime dependencies, ultra-fast and responsive.
 
-## Stack
+## Target Audience
+- macOS software engineers, power users, designers, system administrators, and former Windows/Linux users who miss instant right-click file creation and need an in-place, editable Quick Look experience in Finder.
 
-Static HTML5, modern CSS3, and vanilla JavaScript (zero external runtime dependencies, ultra-fast, GitHub Pages ready in `docs/`).
+## Value Proposition
+- Instant file creation across 34+ curated formats directly from Finder's contextual menu.
+- Lightweight floating Quick Editor (`⌥ Space`) with real-time Finder selection sync, multi-tab editing, and external editor integration without launching a heavy IDE.
 
-## Users
+## Core Capabilities
+1. **Right-Click Context Menu**: Native FinderSync extension creating valid boilerplate files and Office/iWork templates.
+2. **In-Place Quick Editor**: Floating Quick Look-style editor triggered by `⌥ Space` with arrow-key Finder selection tracking.
+3. **Independent Format Controls**: Granular enablement of file types for New File vs. Quick Editor.
+4. **Terminal Integration**: Jump to active folder in 8+ terminal emulators.
+5. **System Fonts & Customization**: Full system font access (SF Mono, Menlo, JetBrains Mono), line numbering, themes, and soft wrap.
 
-macOS developers, designers, system administrators, power users, and former Windows/Linux users who miss instant right-click file creation and need an in-place, editable Quick Look experience in Finder.
+## User Onboarding & Guidance Flow
+1. **Install**: Direct release `.zip` or Homebrew cask install.
+2. **Activate Finder Extension**: Explicit toggle in `System Settings → General → Login Items & Extensions → Finder Extensions`.
+3. **Grant Accessibility**: Authorize in `System Settings → Privacy & Security → Accessibility` to enable the global `⌥ Space` hotkey.
+4. **Verify**: Test sweep tool (`swift tests/run_full_test_sweep.swift`) validates 180 points of functionality.
 
-## Product Purpose
-
-MacNewFile Enhanced provides native right-click "New File" creation across 34+ formats and a floating, in-place Quick Editor (`⌥ Space`) with multi-file tabs, dynamic Finder selection tracking, and external editor launching.
-
-## Positioning
-
-Default macOS Finder only creates folders; Quick Look (`Space`) is strictly read-only. MacNewFile Enhanced provides true in-place file creation and editable preview directly within Finder with native Apple HIG fidelity.
-
-## Operating Context
-
-macOS 11.0 Big Sur through macOS 15+ Sequoia on Apple Silicon & Intel Macs. Used daily across Finder directories, Desktops, coding workflows, config editing, and terminal tasks.
-
-## Capabilities and Constraints
-
-- Right-click "New File" menu with 34+ curated file types and custom extension creation.
-- Instant In-Place Quick Editor triggered by `⌥ Space` (or custom hotkeys) with multi-tab support and Finder arrow navigation tracking.
-- In-place saving (`⌘S`), auto-closing on empty selection, and one-key external editor launch (`⌘↵`).
-- Choice of 8+ terminal emulators (Terminal, iTerm2, Ghostty, Kitty, Alacritty, Warp, WezTerm, Hyper).
-- GitHub Pages landing site in `docs/` that showcases the application with interactive demos, keyboard shortcuts, installation guides, and download links.
-
-## Brand Commitments
-
-- Name: MacNewFile Enhanced
-- Repo: `alph-a07/MacNewFile-Enhanced`
-- License: GNU GPL v3.0 (100% Free & Open Source)
-- Visual Identity: Apple Human Interface Guidelines, refined typography, subtle glassmorphism, crisp vector iconography, restrained and purposeful micro-interactions.
-
-## Evidence on Hand
-
-- Native macOS application, FinderSync extension, and 180-test automated verification suite.
-- App icon assets at `MacNewFile/Assets.xcassets/AppIcon.appiconset/add (1) (1)-modified.png` and `assets/`.
-- Pre-built distribution package `dist/MacNewFile.zip`.
-
-## Product Principles
-
-1. Apple Native Craft: Adheres strictly to modern Apple design language (San Francisco typography, materials, translucency, precision spacing).
-2. Frictionless Utility: Solves everyday macOS friction immediately.
-3. Lightweight & Fast: Sub-millisecond performance, zero bloat, pure vanilla web architecture for GitHub Pages.
-4. 100% FOSS: Completely free, transparent, and private.
+## Brand Principles
+- **Apple Native Craft**: Strict adherence to Apple Human Interface Guidelines (San Francisco typography, quiet chrome, graphite neutral ramps, tactile keycaps).
+- **Zero Slop**: No hue gradients, no glowing halos, no hype copy, no repetitive badges, no emojis in tables or interfaces.
+- **Performance & Privacy**: Sub-millisecond execution, zero analytics or telemetry, 100% Free & Open Source under GNU GPL-3.0.

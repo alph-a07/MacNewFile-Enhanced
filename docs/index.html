@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MacNewFile Enhanced — Right-Click File Creation &amp; Quick Editor for macOS</title>
+  <title>MacNewFile — Right-Click File Creation &amp; Quick Editor for macOS</title>
   <meta name="description" content="The missing right-click 'New File' menu and in-place Quick Look editor (⌥ Space) for macOS Finder. Native, lightweight, and 100% Free &amp; Open Source.">
   <link rel="icon" type="image/png" href="assets/app-icon.png">
   <link rel="stylesheet" href="style.css">
@@ -16,192 +16,366 @@
       <a href="#" class="brand-lockup">
         <img src="assets/app-icon.png" alt="MacNewFile Icon" class="brand-icon">
         <span>MacNewFile</span>
-        <span class="version-badge">v3.2.0</span>
+        <span class="brand-version">v3.2.0</span>
       </a>
 
-      <nav class="nav-links-cluster">
-        <a href="#features" class="nav-anchor">Features</a>
-        <a href="#quick-editor" class="nav-anchor">Quick Editor</a>
-        <a href="#formats" class="nav-anchor">File Formats</a>
-        <a href="#terminals" class="nav-anchor">Terminals</a>
-        <a href="#installation" class="nav-anchor">Install</a>
-        <a href="https://github.com/alph-a07/MacNewFile-Enhanced" target="_blank" rel="noopener noreferrer" class="nav-anchor">GitHub ↗</a>
+      <nav class="nav-links" aria-label="Primary navigation">
+        <a href="#setup" class="nav-link">Setup</a>
+        <a href="#features" class="nav-link">Features</a>
+        <a href="#shortcuts" class="nav-link">Shortcuts</a>
+        <a href="#formats" class="nav-link">Formats</a>
+        <a href="#terminals" class="nav-link">Terminals</a>
+        <a href="#installation" class="nav-link">Install</a>
       </nav>
 
-      <div class="header-actions">
-        <a href="https://buymeacoffee.com/itsjeel01" target="_blank" rel="noopener noreferrer" class="btn-coffee" title="Support development on Buy Me a Coffee">
-          <span>☕ Sponsor</span>
-        </a>
-        <button id="themeToggleBtn" class="theme-btn" aria-label="Toggle Theme">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+      <div class="header-controls">
+        <button id="themeToggleBtn" class="btn-icon" aria-label="Switch theme">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
         </button>
-        <a href="https://github.com/alph-a07/MacNewFile-Enhanced/releases/latest" class="btn-sm-primary" target="_blank" rel="noopener noreferrer">
+        <a href="https://github.com/alph-a07/MacNewFile-Enhanced" target="_blank" rel="noopener noreferrer" class="btn-icon" aria-label="GitHub Repository" title="View Source on GitHub">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>
+        </a>
+        <a href="https://github.com/alph-a07/MacNewFile-Enhanced/releases/latest" class="btn-nav-primary" target="_blank" rel="noopener noreferrer">
           <span>Download</span>
         </a>
+        <button id="mobileMenuBtn" class="btn-icon mobile-menu-btn" aria-label="Toggle navigation menu" aria-expanded="false">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+        </button>
       </div>
+    </div>
+
+    <!-- Mobile Navigation Drawer -->
+    <div id="mobileNavDrawer" class="mobile-nav-drawer" aria-label="Mobile navigation">
+      <a href="#setup" class="mobile-nav-link">Setup Guide</a>
+      <a href="#features" class="mobile-nav-link">Features</a>
+      <a href="#shortcuts" class="mobile-nav-link">Keyboard Shortcuts</a>
+      <a href="#formats" class="mobile-nav-link">Supported Formats</a>
+      <a href="#terminals" class="mobile-nav-link">Terminal Emulators</a>
+      <a href="#installation" class="mobile-nav-link">Installation</a>
+      <a href="https://github.com/alph-a07/MacNewFile-Enhanced" target="_blank" rel="noopener noreferrer" class="mobile-nav-link">GitHub Repository ↗</a>
     </div>
   </header>
 
   <!-- Hero Section -->
   <main>
     <section class="hero-section container">
-      <div class="hero-kicker">Native macOS Finder Extension • 100% Free &amp; Open Source</div>
+      <div class="hero-kicker">Native macOS Finder Extension</div>
 
-      <h1 class="hero-h1">Right-click to create any file.<br>Option+Space to edit in place.</h1>
+      <h1 class="hero-headline">Right-click to create any file.<br>Option+Space to edit in place.</h1>
 
       <p class="hero-lead">
-        MacNewFile brings instant file creation across 34+ formats to Finder's contextual menu, paired with an editable Quick Look window for fast edits without launching a heavy IDE.
+        MacNewFile brings instant file creation across 34+ formats directly into Finder's contextual menu, paired with an editable Quick Look window for fast tweaks without launching a heavy IDE.
       </p>
 
-      <div class="hero-actions-row">
-        <a href="https://github.com/alph-a07/MacNewFile-Enhanced/releases/latest" class="btn-hero-download" target="_blank" rel="noopener noreferrer">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <div class="hero-actions">
+        <a href="https://github.com/alph-a07/MacNewFile-Enhanced/releases/latest" class="btn-primary-action" target="_blank" rel="noopener noreferrer">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
             <polyline points="7 10 12 15 17 10"></polyline>
             <line x1="12" y1="15" x2="12" y2="3"></line>
           </svg>
-          <span>Download MacNewFile v3.2.0</span>
+          <span>Download for macOS</span>
         </a>
 
-        <div id="brewCommandPill" class="brew-pill" title="Click to copy Homebrew command">
-          <span style="color:var(--text-muted);">$</span>
+        <div id="brewCommandPill" class="btn-copy-command" title="Click to copy Homebrew install command" role="button" tabindex="0">
+          <span class="command-prompt">$</span>
           <span>brew install --cask macnewfile</span>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
           </svg>
         </div>
       </div>
 
-      <div class="hero-subnotes">
+      <div class="hero-meta">
         <span>macOS 11.0 to 15.x+</span>
-        <span>•</span>
+        <span class="hero-meta-divider"></span>
         <span>Universal Binary (Apple Silicon &amp; Intel)</span>
-        <span>•</span>
-        <span>GPL-3.0 License</span>
+        <span class="hero-meta-divider"></span>
+        <span>GNU GPL-3.0 License</span>
       </div>
 
-      <!-- Hero Visual Showcase (Actual Real App Screenshots) -->
-      <div class="hero-visual-stage">
-        <div class="screenshot-tabs-nav">
-          <button class="screenshot-tab-btn active" data-shot="shot-finder">
+      <!-- Hero Visual Showcase -->
+      <div class="showcase-stage">
+        <div class="showcase-switcher" role="tablist" aria-label="Screenshot view switcher">
+          <button class="showcase-tab active" data-shot="shot-finder" role="tab" aria-selected="true">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
             <span>Finder Context Menu</span>
           </button>
-          <button class="screenshot-tab-btn" data-shot="shot-qe">
-            <span>Option+Space Quick Editor</span>
+          <button class="showcase-tab" data-shot="shot-qe" role="tab" aria-selected="false">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+            <span>Option + Space Quick Editor</span>
           </button>
         </div>
 
-        <div class="screenshot-frame">
-          <img id="mainHeroScreenshot" src="assets/finder-context-menu.jpg" alt="Actual screenshot of MacNewFile Finder Context Menu in macOS" class="actual-screenshot-img">
-          <div class="screenshot-caption">
-            <span id="screenshotCaptionText">Native macOS Finder contextual menu showing 'New File' submenu with 34+ curated file types.</span>
-            <span style="font-family:var(--font-mono);font-size:12px;color:var(--text-muted);">Real Capture • macOS Sequoia</span>
+        <div class="macos-window">
+          <div class="macos-titlebar">
+            <div class="traffic-lights">
+              <span class="traffic-light close"></span>
+              <span class="traffic-light min"></span>
+              <span class="traffic-light max"></span>
+            </div>
+            <div class="window-title">Finder — MacNewFile</div>
+          </div>
+          <div class="window-body">
+            <img id="mainHeroScreenshot" src="assets/finder-context-menu.jpg" alt="Native macOS Finder context menu with New File submenu" class="window-screenshot">
+          </div>
+          <div class="window-caption">
+            <span id="screenshotCaptionText">Native macOS Finder contextual menu showing "New File" submenu with 34+ curated file types.</span>
+            <span id="screenshotCaptionTag" class="caption-tag">Finder Context Menu</span>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- Deep-Dive Features with Real Screenshots -->
-    <section id="features" class="container features-section">
-      <div class="section-label">CORE WORKFLOW</div>
-      <h2 class="section-heading">Built directly into the macOS file system.</h2>
-      <p class="section-subtext">
-        Zero background daemons, zero Electron overhead. MacNewFile runs as a native sandboxed FinderSync extension in Swift and Objective-C.
+    <!-- 3-Step Setup & User Onboarding Walkthrough -->
+    <section id="setup" class="section container">
+      <div class="section-kicker">Getting started</div>
+      <h2 class="section-title">Up and running in three steps</h2>
+      <p class="section-desc">
+        macOS sandboxing requires explicit user authorization for Finder extensions and global shortcuts. Follow these three steps to activate MacNewFile.
+      </p>
+
+      <div class="onboarding-steps">
+        <div class="step-card">
+          <div class="step-num">01 / INSTALL</div>
+          <h3 class="step-title">Place in Applications</h3>
+          <p class="step-body">
+            Download <code>MacNewFile.zip</code> from Releases or install via Homebrew, then move <code>MacNewFile.app</code> into your <code>/Applications</code> folder.
+          </p>
+          <div class="step-path">
+            xattr -dr com.apple.quarantine /Applications/MacNewFile.app
+          </div>
+        </div>
+
+        <div class="step-card">
+          <div class="step-num">02 / ACTIVATE</div>
+          <h3 class="step-title">Enable Finder Extension</h3>
+          <p class="step-body">
+            Open macOS Settings and check the MacNewFile box under Finder Extensions so the right-click menu appears in folders.
+          </p>
+          <div class="step-path">
+            System Settings → General → Login Items &amp; Extensions → Finder Extensions
+          </div>
+        </div>
+
+        <div class="step-card">
+          <div class="step-num">03 / SHORTCUT</div>
+          <h3 class="step-title">Grant Accessibility</h3>
+          <p class="step-body">
+            Allow Accessibility permissions so the global <kbd>⌥ Space</kbd> shortcut can detect active Finder selections and float the editor window.
+          </p>
+          <div class="step-path">
+            System Settings → Privacy &amp; Security → Accessibility → MacNewFile
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Core Features with Real Screenshots -->
+    <section id="features" class="section container">
+      <div class="section-kicker">Core workflow</div>
+      <h2 class="section-title">Engineered directly for Finder</h2>
+      <p class="section-desc">
+        Zero background daemons, zero Electron runtime. MacNewFile runs as a lightweight, native sandboxed FinderSync extension in Swift and Objective-C.
       </p>
 
       <!-- Row 1: Right-Click File Creation -->
-      <div class="feature-deepdive-row">
-        <div class="feature-content">
-          <h3>Native Right-Click Context Menu</h3>
+      <div class="feature-row">
+        <div class="feature-info">
+          <h3>Native right-click file creation</h3>
           <p>
-            In Windows and Linux, right-clicking in any folder gives you immediate file creation. On macOS, Finder never offered this. MacNewFile restores this functionality with a clean, native contextual menu that respects system appearance.
+            Right-click in any Finder folder or on the Desktop to create clean, ready-to-edit files. Each template includes standard boilerplate or native blank document structures.
           </p>
-          <ul class="feature-bullet-list">
-            <li>34+ built-in formats across Code, Documents, and Data</li>
-            <li>Dynamic template icon rasterization matching Dark and Light mode</li>
-            <li>Automatic directory path resolution with AppleScript fallback</li>
-            <li>Instant file renaming focus upon creation</li>
+          <ul class="feature-checklist">
+            <li>
+              <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>34+ built-in formats across code, documents, and system configuration</span>
+            </li>
+            <li>
+              <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>Template icons dynamically adapt to macOS Light and Dark appearance</span>
+            </li>
+            <li>
+              <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>Automatic target directory capture with AppleScript fallback</span>
+            </li>
+            <li>
+              <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>Immediate inline rename focus upon creation</span>
+            </li>
           </ul>
         </div>
-        <div class="feature-media-frame">
+        <div class="feature-media">
           <img src="assets/finder-context-menu.jpg" alt="Finder Right Click Context Menu Screenshot" loading="lazy">
         </div>
       </div>
 
       <!-- Row 2: In-Place Quick Editor -->
-      <div class="feature-deepdive-row reversed" id="quick-editor">
-        <div class="feature-content">
-          <h3>Quick Look, but Editable</h3>
+      <div class="feature-row reverse" id="quick-editor">
+        <div class="feature-info">
+          <h3>Quick Look, but editable</h3>
           <p>
-            macOS Quick Look (Space) is strictly read-only. Hit <strong>Option + Space</strong> on any file in Finder to open a floating in-place editor. Inspect, tweak lines, and save instantly with <strong>⌘S</strong> without launching VS Code or Xcode.
+            macOS Quick Look (<kbd>Space</kbd>) is strictly read-only. Press <kbd>⌥ Space</kbd> on any file in Finder to open a lightweight, floating editor directly over your selection.
           </p>
-          <ul class="feature-bullet-list">
-            <li>Floating translucent panel anchored over your Finder selection</li>
-            <li>Arrow-key reactive tracking: as you move through Finder, the preview updates live</li>
-            <li>Multi-tab workspace when selecting multiple files in Finder</li>
-            <li>One-key external editor launch with <strong>⌘↵</strong> (Cursor, VS Code, Zed)</li>
+          <ul class="feature-checklist">
+            <li>
+              <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>Floating panel anchored over your active Finder selection</span>
+            </li>
+            <li>
+              <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>Arrow-key tracking: moving in Finder dynamically switches the previewed file</span>
+            </li>
+            <li>
+              <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>Multi-tab editor when selecting multiple files in Finder</span>
+            </li>
+            <li>
+              <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>Save in-place with <kbd>⌘S</kbd> or open in external IDEs with <kbd>⌘↵</kbd></span>
+            </li>
           </ul>
         </div>
-        <div class="feature-media-frame">
+        <div class="feature-media">
           <img src="assets/quick-editor-window.png" alt="MacNewFile Quick Editor Screenshot" loading="lazy">
         </div>
       </div>
 
-      <!-- Row 3: Settings & Independent Enablement -->
-      <div class="feature-deepdive-row">
-        <div class="feature-content">
-          <h3>Independent File Type Architecture</h3>
+      <!-- Row 3: Independent File Type Controls -->
+      <div class="feature-row">
+        <div class="feature-info">
+          <h3>Independent file type controls</h3>
           <p>
-            You have full control over which formats appear where. Toggle file types on or off for the Right-Click menu independently from the Quick Editor preview, or register custom extensions with custom starter boilerplate.
+            Configure exactly which formats appear in which context. Toggle file types for the right-click menu independently from the Quick Editor, or register custom extensions with custom boilerplate.
           </p>
-          <ul class="feature-bullet-list">
-            <li>Independent toggles: enabled in New File ≠ enabled in Quick Editor</li>
-            <li>Search and category filtering across all supported formats</li>
-            <li>Add custom file types with custom extensions (e.g. .svelte, .vue, .proto)</li>
-            <li>Instant dynamic reload without restarting Finder</li>
+          <ul class="feature-checklist">
+            <li>
+              <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>Independent toggles: enabled in New File ≠ enabled in Quick Editor</span>
+            </li>
+            <li>
+              <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>Instant search and category filtering across all supported formats</span>
+            </li>
+            <li>
+              <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>Add custom extensions (e.g. <code>.svelte</code>, <code>.vue</code>, <code>.proto</code>)</span>
+            </li>
+            <li>
+              <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>Dynamic preferences reload without restarting Finder</span>
+            </li>
           </ul>
         </div>
-        <div class="feature-media-frame">
+        <div class="feature-media">
           <img src="assets/settings-file-types.png" alt="Settings File Types Tab Screenshot" loading="lazy">
         </div>
       </div>
 
-      <!-- Row 4: Settings & Quick Editor Customization -->
-      <div class="feature-deepdive-row reversed">
-        <div class="feature-content">
-          <h3>System Fonts &amp; Appearance Control</h3>
+      <!-- Row 4: Appearance & System Fonts -->
+      <div class="feature-row reverse">
+        <div class="feature-info">
+          <h3>System fonts and appearance</h3>
           <p>
-            Customize your Quick Editor experience with access to all installed macOS system fonts (SF Mono, Menlo, Monaco, JetBrains Mono, Fira Code), font size slider, themes, word wrapping, and spring animation controls.
+            Personalize the Quick Editor with access to all installed macOS monospace and proportional system fonts, customizable font sizing, line numbers gutter, and soft word wrapping.
           </p>
-          <ul class="feature-bullet-list">
-            <li>Theme selection: System Match, VS Code Dark Modern, or Light</li>
-            <li>Full system font enumeration with live preview</li>
-            <li>Configurable line numbers gutter and soft word wrap</li>
-            <li>Fluid Quick Look opening and closing animations</li>
+          <ul class="feature-checklist">
+            <li>
+              <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>Theme options: System Match, VS Code Dark Modern, or Light</span>
+            </li>
+            <li>
+              <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>Full system font enumeration (SF Mono, Menlo, JetBrains Mono, Fira Code)</span>
+            </li>
+            <li>
+              <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>Configurable line numbers gutter and soft word wrap</span>
+            </li>
+            <li>
+              <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>Fluid spring zoom and fade animations anchored to Finder selections</span>
+            </li>
           </ul>
         </div>
-        <div class="feature-media-frame">
+        <div class="feature-media">
           <img src="assets/settings-quick-editor.png" alt="Settings Quick Editor Tab Screenshot" loading="lazy">
         </div>
       </div>
     </section>
 
+    <!-- Keyboard Shortcuts Reference -->
+    <section id="shortcuts" class="section container">
+      <div class="section-kicker">Keyboard reference</div>
+      <h2 class="section-title">Essential shortcuts</h2>
+      <p class="section-desc">
+        Designed for fast keyboard navigation without taking your hands off the home row.
+      </p>
+
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Shortcut</th>
+              <th>Context</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><kbd>⌥ Space</kbd></td>
+              <td>Finder (file selected)</td>
+              <td>Open or close Quick Editor (toggle)</td>
+            </tr>
+            <tr>
+              <td><kbd>⌘S</kbd></td>
+              <td>Quick Editor</td>
+              <td>Save changes in-place without leaving Finder</td>
+            </tr>
+            <tr>
+              <td><kbd>Escape</kbd> or <kbd>⌘W</kbd></td>
+              <td>Quick Editor</td>
+              <td>Close Quick Editor</td>
+            </tr>
+            <tr>
+              <td><kbd>⌘↵</kbd></td>
+              <td>Quick Editor</td>
+              <td>Open active file in external editor (VS Code, Cursor, Zed)</td>
+            </tr>
+            <tr>
+              <td><kbd>↑</kbd> / <kbd>↓</kbd> / <kbd>←</kbd> / <kbd>→</kbd></td>
+              <td>Finder (editor open)</td>
+              <td>Dynamically switch preview to newly selected file</td>
+            </tr>
+            <tr>
+              <td><kbd>⌘,</kbd></td>
+              <td>MacNewFile Menu Bar</td>
+              <td>Open Settings window</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
     <!-- File Formats Directory -->
-    <section id="formats" class="container catalog-section">
-      <div class="section-label">EXTENSIONS &amp; FORMATS</div>
-      <h2 class="section-heading">Supported File Types</h2>
-      <p class="section-subtext">
+    <section id="formats" class="section container">
+      <div class="section-kicker">Catalog</div>
+      <h2 class="section-title">Supported file formats</h2>
+      <p class="section-desc">
         All 34+ built-in formats create clean files with valid boilerplate or native office templates.
       </p>
 
-      <div class="catalog-search-row">
-        <input type="text" id="catalogSearchField" class="search-input-field" placeholder="Search file types (e.g. .py, .yaml, .swift, .env)..." aria-label="Search File Types">
-        <div class="cat-filters">
-          <button class="filter-btn active" data-cat="all">All (34+)</button>
-          <button class="filter-btn" data-cat="dev">Code &amp; Web</button>
-          <button class="filter-btn" data-cat="docs">Documents</button>
-          <button class="filter-btn" data-cat="sys">Data &amp; Config</button>
+      <div class="catalog-toolbar">
+        <div class="search-box">
+          <svg class="search-icon-adornment" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <input type="text" id="catalogSearchField" class="search-input" placeholder="Search formats (.py, .yaml, .swift, .env)..." aria-label="Search File Types">
+        </div>
+        <div class="filter-group" role="tablist" aria-label="Filter by format category">
+          <button class="filter-pill active" data-cat="all">All (34+)</button>
+          <button class="filter-pill" data-cat="dev">Code &amp; Web</button>
+          <button class="filter-pill" data-cat="docs">Documents</button>
+          <button class="filter-pill" data-cat="sys">Data &amp; Config</button>
         </div>
       </div>
 
@@ -211,92 +385,95 @@
     </section>
 
     <!-- Terminal Selector Showcase -->
-    <section id="terminals" class="container terminal-section">
-      <div class="section-label">DEVELOPER UTILITY</div>
-      <h2 class="section-heading">Open Current Directory in Terminal</h2>
-      <p class="section-subtext">
-        Right-click "Open in Terminal" in any Finder folder launches directly into your favorite emulator with zero delay.
+    <section id="terminals" class="section container">
+      <div class="section-kicker">Developer tools</div>
+      <h2 class="section-title">Open directory in terminal</h2>
+      <p class="section-desc">
+        Right-click "Open in Terminal" in any Finder folder launches directly into your preferred emulator.
       </p>
 
-      <div class="term-tabs-row">
-        <button class="term-tab-pill active" data-term="ghostty">Ghostty</button>
-        <button class="term-tab-pill" data-term="iterm">iTerm2</button>
-        <button class="term-tab-pill" data-term="terminal">Terminal.app</button>
-        <button class="term-tab-pill" data-term="warp">Warp</button>
-        <button class="term-tab-pill" data-term="alacritty">Alacritty</button>
-        <button class="term-tab-pill" data-term="kitty">kitty</button>
-        <button class="term-tab-pill" data-term="wezterm">WezTerm</button>
+      <div class="terminal-tabs">
+        <button class="terminal-tab-btn active" data-term="ghostty">Ghostty</button>
+        <button class="terminal-tab-btn" data-term="iterm">iTerm2</button>
+        <button class="terminal-tab-btn" data-term="terminal">Terminal.app</button>
+        <button class="terminal-tab-btn" data-term="warp">Warp</button>
+        <button class="terminal-tab-btn" data-term="alacritty">Alacritty</button>
+        <button class="terminal-tab-btn" data-term="kitty">kitty</button>
+        <button class="terminal-tab-btn" data-term="wezterm">WezTerm</button>
       </div>
 
-      <div class="terminal-mockup">
-        <div class="terminal-mockup-header">
+      <div class="terminal-frame">
+        <div class="terminal-titlebar">
           <span id="termHeaderLabel">Ghostty — zsh (Native Metal)</span>
         </div>
-        <div class="terminal-mockup-body">
-          <p><span class="term-green">itsjeel01@macbook</span>:<span style="color:#79c0ff">~/Developer/MacNewFile-Enhanced</span>$ <span id="termCommandOutput" style="color:#f0f6fc;">cd ~/Developer/MacNewFile-Enhanced &amp;&amp; open -a Ghostty .</span></p>
-          <p style="color:#8b949e;margin-top:10px;"># Launched directly from FinderSync context menu.</p>
+        <div class="terminal-body">
+          <p><span class="term-host">developer@macbook</span>:<span class="term-path">~/Projects/MacNewFile</span>$ <span id="termCommandOutput" style="color:#f0f6fc;">cd ~/Developer/MacNewFile-Enhanced &amp;&amp; open -a Ghostty .</span></p>
+          <p class="term-comment"># Triggered directly from FinderSync context menu</p>
         </div>
       </div>
     </section>
 
     <!-- Comparison Matrix -->
-    <section class="container table-section">
-      <div class="section-label">COMPARISON</div>
-      <h2 class="section-heading">How MacNewFile Compares</h2>
+    <section class="section container">
+      <div class="section-kicker">Comparison</div>
+      <h2 class="section-title">How MacNewFile compares</h2>
+      <p class="section-desc">
+        Bridging the gap between traditional macOS Finder and modern developer workflows.
+      </p>
 
-      <div class="table-box" style="margin-top: 32px;">
-        <table class="matrix-table">
+      <div class="table-wrapper">
+        <table class="data-table comparison-table">
           <thead>
             <tr>
-              <th>Feature</th>
+              <th>Capability</th>
               <th>macOS Finder</th>
-              <th>Quick Look (Space)</th>
+              <th>Quick Look (<kbd>Space</kbd>)</th>
               <th>Windows Explorer</th>
-              <th class="col-highlight">MacNewFile Enhanced</th>
+              <th class="col-highlight">MacNewFile</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td><strong>Right-Click New File</strong></td>
-              <td>❌ (Folders only)</td>
-              <td>❌</td>
-              <td>✅ (Basic list)</td>
-              <td class="col-highlight"><strong>✅ 34+ Formats + Custom</strong></td>
+              <td><strong>Right-click new file</strong></td>
+              <td><span class="check-false">— (Folders only)</span></td>
+              <td><span class="check-false">—</span></td>
+              <td><span class="check-true">Basic list</span></td>
+              <td class="col-highlight"><span class="check-true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg> 34+ types &amp; custom</span></td>
             </tr>
             <tr>
-              <td><strong>In-Place File Editing</strong></td>
-              <td>❌</td>
-              <td>❌ (Read-only)</td>
-              <td>❌</td>
-              <td class="col-highlight"><strong>✅ Option+Space Quick Editor</strong></td>
+              <td><strong>In-place file editing</strong></td>
+              <td><span class="check-false">—</span></td>
+              <td><span class="check-false">— (Read-only)</span></td>
+              <td><span class="check-false">—</span></td>
+              <td class="col-highlight"><span class="check-true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg> Option+Space editor</span></td>
             </tr>
             <tr>
-              <td><strong>Finder Selection Tracking</strong></td>
-              <td>❌</td>
-              <td>✅</td>
-              <td>❌</td>
-              <td class="col-highlight"><strong>✅ Real-Time Arrow Sync</strong></td>
+              <td><strong>Finder selection tracking</strong></td>
+              <td><span class="check-false">—</span></td>
+              <td><span class="check-true">Arrow keys</span></td>
+              <td><span class="check-false">—</span></td>
+              <td class="col-highlight"><span class="check-true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg> Live arrow tracking</span></td>
             </tr>
             <tr>
-              <td><strong>Multi-File Tabbed Preview</strong></td>
-              <td>❌</td>
-              <td>❌</td>
-              <td>❌</td>
-              <td class="col-highlight"><strong>✅ Multi-Tab Editor</strong></td>
+              <td><strong>Multi-file tabbed preview</strong></td>
+              <td><span class="check-false">—</span></td>
+              <td><span class="check-false">—</span></td>
+              <td><span class="check-false">—</span></td>
+              <td class="col-highlight"><span class="check-true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg> Tabbed workspace</span></td>
             </tr>
             <tr>
-              <td><strong>Terminal Emulator Choice</strong></td>
-              <td>❌ (Terminal only)</td>
-              <td>❌</td>
-              <td>❌</td>
-              <td class="col-highlight"><strong>✅ 8+ Terminal Emulators</strong></td>
+              <td><strong>Custom terminal emulator</strong></td>
+              <td><span class="check-false">— (Terminal only)</span></td>
+              <td><span class="check-false">—</span></td>
+              <td><span class="check-false">—</span></td>
+              <td class="col-highlight"><span class="check-true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg> 8+ terminal apps</span></td>
             </tr>
             <tr>
-              <td><strong>Open Source &amp; Free</strong></td>
-              <td>❌ Proprietary</td>
-              <td>❌ Proprietary</td>
-              <td>❌ Proprietary</td>
-              <td class="col-highlight"><strong>✅ 100% GPL-3.0 FOSS</strong></td>
+              <td><strong>Free &amp; Open Source</strong></td>
+              <td><span class="check-false">Proprietary</span></td>
+              <td><span class="check-false">Proprietary</span></td>
+              <td><span class="check-false">Proprietary</span></td>
+              <td class="col-highlight"><span class="check-true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg> 100% GNU GPL-3.0</span></td>
             </tr>
           </tbody>
         </table>
@@ -304,65 +481,99 @@
     </section>
 
     <!-- Installation & FAQ -->
-    <section id="installation" class="container install-section">
-      <div class="section-label">GET STARTED</div>
-      <h2 class="section-heading">Installation</h2>
-      <p class="section-subtext">
-        Install via Homebrew, direct download, or compile cleanly from source.
+    <section id="installation" class="section container">
+      <div class="section-kicker">Installation</div>
+      <h2 class="section-title">Install MacNewFile</h2>
+      <p class="section-desc">
+        Install via Homebrew, direct release download, or compile from source.
       </p>
 
-      <div class="install-tabs">
-        <button class="install-tab-btn active" data-tab="tab-brew">Homebrew</button>
-        <button class="install-tab-btn" data-tab="tab-direct">Direct Download (.zip)</button>
-        <button class="install-tab-btn" data-tab="tab-source">Build from Source</button>
+      <div class="install-nav">
+        <button class="install-tab-trigger active" data-tab="tab-brew">Homebrew</button>
+        <button class="install-tab-trigger" data-tab="tab-direct">Direct Download (.zip)</button>
+        <button class="install-tab-trigger" data-tab="tab-source">Build from Source</button>
       </div>
 
-      <div class="install-panel" id="tab-brew">
-        <p style="color:var(--text-secondary);margin-bottom:8px;">Install via Homebrew with automatic updates:</p>
-        <div class="code-block">brew tap alph-a07/macnewfile<br>brew install --cask macnewfile</div>
+      <div class="install-panel-box" id="tab-brew">
+        <p style="color:var(--text-secondary);font-size:13px;margin-bottom:8px;">Install via Homebrew:</p>
+        <div class="code-snippet">
+          <code>brew install --cask macnewfile</code>
+          <button class="snippet-copy-btn">Copy</button>
+        </div>
+        <p style="color:var(--text-muted);font-size:12px;margin-top:12px;">Then follow the 3-step setup guide above to enable the Finder extension and Accessibility permissions.</p>
       </div>
 
-      <div class="install-panel" id="tab-direct" style="display:none;">
-        <p style="color:var(--text-secondary);margin-bottom:8px;">1. Download <code>MacNewFile.zip</code> from <a href="https://github.com/alph-a07/MacNewFile-Enhanced/releases/latest" style="color:var(--text-accent);">GitHub Releases</a>.</p>
-        <p style="color:var(--text-secondary);margin-bottom:8px;">2. Unzip and drag <code>MacNewFile.app</code> into <code>/Applications</code>.</p>
-        <p style="color:var(--text-secondary);margin-bottom:8px;">3. Remove Gatekeeper quarantine in Terminal:</p>
-        <div class="code-block">xattr -dr com.apple.quarantine /Applications/MacNewFile.app</div>
+      <div class="install-panel-box" id="tab-direct" style="display:none;">
+        <p style="color:var(--text-secondary);font-size:13px;margin-bottom:8px;">1. Download <code>MacNewFile.zip</code> from <a href="https://github.com/alph-a07/MacNewFile-Enhanced/releases/latest" target="_blank" rel="noopener noreferrer" style="color:var(--accent);">GitHub Releases</a>.</p>
+        <p style="color:var(--text-secondary);font-size:13px;margin-bottom:8px;">2. Unzip and move <code>MacNewFile.app</code> into <code>/Applications</code>.</p>
+        <p style="color:var(--text-secondary);font-size:13px;margin-bottom:8px;">3. Clear Gatekeeper quarantine in Terminal:</p>
+        <div class="code-snippet">
+          <code>xattr -dr com.apple.quarantine /Applications/MacNewFile.app</code>
+          <button class="snippet-copy-btn">Copy</button>
+        </div>
       </div>
 
-      <div class="install-panel" id="tab-source" style="display:none;">
-        <p style="color:var(--text-secondary);margin-bottom:8px;">Compile directly using macOS Command Line Tools (no Xcode.app required):</p>
-        <div class="code-block">git clone https://github.com/alph-a07/MacNewFile-Enhanced.git<br>cd MacNewFile-Enhanced<br>chmod +x scripts/build.sh<br>./scripts/build.sh</div>
+      <div class="install-panel-box" id="tab-source" style="display:none;">
+        <p style="color:var(--text-secondary);font-size:13px;margin-bottom:8px;">Compile with macOS Command Line Tools (no full Xcode GUI required):</p>
+        <div class="code-snippet">
+          <code>git clone https://github.com/alph-a07/MacNewFile-Enhanced.git
+cd MacNewFile-Enhanced
+chmod +x scripts/build.sh
+./scripts/build.sh
+swift tests/run_full_test_sweep.swift</code>
+          <button class="snippet-copy-btn">Copy</button>
+        </div>
       </div>
 
       <!-- FAQ Accordion -->
-      <div class="faq-container">
-        <div class="faq-row">
-          <button class="faq-header-btn">
+      <div class="faq-list">
+        <div class="faq-card">
+          <button class="faq-trigger" aria-expanded="false">
             <span>How do I enable the Finder extension?</span>
-            <span>+</span>
+            <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
           </button>
-          <div class="faq-content">
-            Go to <strong>System Settings → General → Login Items &amp; Extensions → Finder Extensions</strong> and enable <strong>MacNewFile</strong>. Then run <code>killall Finder</code> in Terminal.
+          <div class="faq-answer">
+            Open <strong>System Settings → General → Login Items &amp; Extensions → Finder Extensions</strong> and enable <strong>MacNewFile</strong>. If it does not appear immediately, restart Finder by running <code>killall Finder</code> in Terminal.
           </div>
         </div>
 
-        <div class="faq-row">
-          <button class="faq-header-btn">
-            <span>Option + Space does not open Quick Editor.</span>
-            <span>+</span>
+        <div class="faq-card">
+          <button class="faq-trigger" aria-expanded="false">
+            <span>Option + Space does not open the Quick Editor</span>
+            <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
           </button>
-          <div class="faq-content">
-            Grant Accessibility permissions to <strong>MacNewFile</strong> in <strong>System Settings → Privacy &amp; Security → Accessibility</strong> so Carbon global hotkeys can detect Finder's selection. You can also rebind the shortcut in Settings (`⌘,`).
+          <div class="faq-answer">
+            Grant Accessibility permissions to <strong>MacNewFile</strong> in <strong>System Settings → Privacy &amp; Security → Accessibility</strong> so Carbon global hotkeys can detect Finder's active selection. You can also customize the shortcut in MacNewFile Settings (<kbd>⌘,</kbd>) if <kbd>⌥ Space</kbd> conflicts with another utility.
           </div>
         </div>
 
-        <div class="faq-row">
-          <button class="faq-header-btn">
+        <div class="faq-card">
+          <button class="faq-trigger" aria-expanded="false">
             <span>Why is an xattr command needed for direct download?</span>
-            <span>+</span>
+            <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
           </button>
-          <div class="faq-content">
-            Apple requires open-source developers to pay an annual $99 USD developer subscription for notarization tickets. Because MacNewFile is 100% free software, it is signed with an ad-hoc certificate. Running <code>xattr -dr com.apple.quarantine</code> allows macOS Gatekeeper to run the app natively.
+          <div class="faq-answer">
+            Apple requires open-source developers to pay an annual $99 USD developer subscription for official notarization tickets. Because MacNewFile is 100% free software, it is distributed with ad-hoc signatures. Running <code>xattr -dr com.apple.quarantine</code> allows macOS Gatekeeper to run the app natively.
+          </div>
+        </div>
+
+        <div class="faq-card">
+          <button class="faq-trigger" aria-expanded="false">
+            <span>Does MacNewFile work inside iCloud Drive?</span>
+            <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </button>
+          <div class="faq-answer">
+            MacNewFile works across all local APFS, Mac OS Extended, and external drives. Note that Apple restricts third-party FinderSync extensions at the root of the iCloud Drive directory per macOS system policy; subfolders within iCloud Drive are supported.
+          </div>
+        </div>
+
+        <div class="faq-card">
+          <button class="faq-trigger" aria-expanded="false">
+            <span>How do I add custom file extensions?</span>
+            <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </button>
+          <div class="faq-answer">
+            Click the MacNewFile menu bar icon and select <strong>Settings (<kbd>⌘,</kbd>)</strong>. Navigate to the <strong>File Types</strong> tab and click the <strong>+</strong> button at the bottom. Enter your custom extension (e.g. <code>.svelte</code>, <code>.proto</code>), name, and optional default starter template.
           </div>
         </div>
       </div>
@@ -371,14 +582,16 @@
 
   <!-- Footer -->
   <footer class="site-footer container" role="contentinfo">
-    <div class="footer-nav">
-      <a href="https://github.com/alph-a07/MacNewFile-Enhanced">GitHub Repository</a>
+    <div class="footer-links">
+      <a href="https://github.com/alph-a07/MacNewFile-Enhanced">GitHub</a>
       <a href="https://github.com/alph-a07/MacNewFile-Enhanced/releases">Releases</a>
-      <a href="https://buymeacoffee.com/itsjeel01">Buy Me a Coffee (itsjeel01)</a>
-      <a href="https://github.com/alph-a07/MacNewFile-Enhanced/blob/main/CHECKLIST.md">Open Source Checklist</a>
+      <a href="https://buymeacoffee.com/itsjeel01">Sponsor</a>
+      <a href="https://github.com/alph-a07/MacNewFile-Enhanced/blob/main/CHECKLIST.md">Checklist</a>
       <a href="https://github.com/alph-a07/MacNewFile-Enhanced/blob/main/LICENSE">GNU GPL-3.0 License</a>
     </div>
-    <p>MacNewFile Enhanced is open-source software maintained by alph-a07 and community contributors. macOS and Finder are trademarks of Apple Inc.</p>
+    <p class="footer-disclaimer">
+      MacNewFile is open-source software maintained by alph-a07 and community contributors. macOS and Finder are trademarks of Apple Inc.
+    </p>
   </footer>
 
   <script src="app.js"></script>
