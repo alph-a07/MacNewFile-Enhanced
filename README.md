@@ -236,6 +236,14 @@ Check our progress against the [Open Source Project Checklist](./CHECKLIST.md).
 
 ---
 
+## Support & Sponsorship
+
+MacNewFile Enhanced is free and open-source software built with love for the macOS community. If MacNewFile makes your daily workflow faster and more enjoyable, consider supporting future development:
+
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-itsjeel01-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/itsjeel01)
+
+---
+
 ## License
 
 This project is licensed under the **GNU General Public License v3.0** (`GPL-3.0`). See the [LICENSE](./LICENSE) file for complete details.

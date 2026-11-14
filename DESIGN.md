@@ -12,30 +12,70 @@ colors:
   text-secondary: "#c2c2c7"
   text-tertiary: "#98989d"
   text-accent: "#47a3ff"
-  bg-canvas: "#0b0c10"
-  bg-surface: "rgba(22, 24, 33, 0.75)"
-  bg-surface-elevated: "rgba(30, 34, 48, 0.85)"
-  border-subtle: "rgba(255, 255, 255, 0.10)"
-  border-glass: "rgba(255, 255, 255, 0.16)"
+  term-bg: "#0d1117"
+  term-header: "#161b22"
+  term-text: "#c9d1d9"
+  bg-canvas: "#090a0f"
+  bg-subtle: "#11131a"
+  bg-surface: "rgba(22, 24, 34, 0.72)"
+  bg-surface-elevated: "rgba(30, 34, 48, 0.88)"
+  border-subtle: "rgba(255, 255, 255, 0.08)"
+  border-glass: "rgba(255, 255, 255, 0.14)"
 typography:
   display:
     fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif"
-    fontSize: "clamp(2.5rem, 5vw, 4.2rem)"
-    fontWeight: 700
-    lineHeight: 1.1
-    letterSpacing: "-0.035em"
+    fontSize: "clamp(2.6rem, 5.5vw, 4.4rem)"
+    fontWeight: 800
+    lineHeight: 1.08
+    letterSpacing: "-0.04em"
   headline:
     fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif"
-    fontSize: "2.2rem"
+    fontSize: "clamp(2.2rem, 4vw, 3rem)"
+    fontWeight: 800
+    lineHeight: 1.15
+    letterSpacing: "-0.03em"
+  title:
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif"
+    fontSize: "1.4rem"
     fontWeight: 700
     lineHeight: 1.2
-    letterSpacing: "-0.025em"
+    letterSpacing: "-0.02em"
   body:
     fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif"
     fontSize: "16px"
     fontWeight: 400
     lineHeight: 1.5
     letterSpacing: "normal"
+  body-sm:
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif"
+    fontSize: "15px"
+    fontWeight: 400
+    lineHeight: 1.6
+    letterSpacing: "normal"
+  label:
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif"
+    fontSize: "14px"
+    fontWeight: 500
+    lineHeight: 1.4
+    letterSpacing: "normal"
+  label-sm:
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif"
+    fontSize: "13px"
+    fontWeight: 500
+    lineHeight: 1.4
+    letterSpacing: "normal"
+  caption:
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif"
+    fontSize: "12px"
+    fontWeight: 500
+    lineHeight: 1.2
+    letterSpacing: "normal"
+  badge:
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif"
+    fontSize: "11px"
+    fontWeight: 600
+    lineHeight: 1
+    letterSpacing: "0.04em"
   mono:
     fontFamily: "'SF Mono', Menlo, Monaco, monospace"
     fontSize: "13px"
@@ -43,9 +83,12 @@ typography:
     lineHeight: 1.6
     letterSpacing: "normal"
 rounded:
+  sm: "6px"
   control: "8px"
   panel: "10px"
-  window: "14px"
+  card: "12px"
+  card-lg: "14px"
+  window: "16px"
   pill: "9999px"
 spacing:
   xs: "4px"
